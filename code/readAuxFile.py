@@ -7,6 +7,8 @@
 #
 import os
 import struct
+from numpy import fromfile
+import matplotlib.pyplot as plt
 
 def readAuxFile(fname):
   """
@@ -136,17 +138,55 @@ def detCalibChirp(TxTemp, RxTemp):
     calChirpFile = []
   return calChirpFile
 
+
+def loadCalChirp(_file, reorg=True, dt='<f'):
+  """
+    This function serves two purposes:
+      1) Load the given calibrated chirp file (_file)
+      2) If the option to reorganize the file is set (default), reorganize
+         the calibrated chirp signal into "standard" order [see below].
+    --- Notes ---
+    The reference chirps are stored in binary files as 4096 floating point numbers,
+    each 4 bytes long and stored in least significant byte first order (LSB--little endian).
+    The first 2048 values represent the real part of the reference chirp, while the remaining
+    2048 values constitute its imaginary part (i.e. negative frequencies). Reference chirps
+    are expressed as complex spectra in the Fourier frequency domain. Frequency spacing between
+    samples is (80/3 MHz) / 4096 = 6.51 kHz. Chirp are in base band, and spectra are ordered in 
+    increasing frequency order. Zero frequency corresponds to sample 1025.
+    From Numpy FFT documentation:
+      The values in the result follow so-called "standard" order: if A = fft(a,n), then A[0]
+      constitutes the zero-frequency term (the sum of the signal), which is always purely real
+      for real inputs. Then A[1:n/2] contains the positive-frequency terms, and A[n/2+1:] 
+      contains the negative-frequency terms, in order of decreasing negative frequency. 
+    Mapping:
+      CalChirp[1024] = A[0]
+      CalChirp[0:2048] = A[1:2049]
+      CalChirp[2048:] = A[:2049:-1]
+  """
+  if os.path.isfile(_file):
+    calChirp = fromfile(_file, dtype=dt)
+    if reorg:
+      #
+      # Perform the mapping as described in the notes above
+      #
+      print("I'm still waiting on F. to respond with answers to my questions concerning the order")
+  else:
+    print('File {} for the calibrated chirp is not found. Please check the path and try again.'.format(_file))
+    calChirp = []
+  return calChirp
+
 def main():
   global auxFile
-  fname = '../data/e_0168901_001_ss19_700_a_a.dat'
+#  fname = '../data/e_0168901_001_ss19_700_a_a.dat'
   fname = '../data/e_1601301_001_ss19_700_a_a.dat'
-  rowNum = range(0, 10504) 
+  rowNum = range(1)
   auxFile = readAuxFile(fname)
   if auxFile != []:
     for _row in rowNum:
       AuxData = readRow(auxFile, _row) 
       print(AuxData['TX_TEMP'], AuxData['RX_TEMP'])
-      detCalibChirp(AuxData['TX_TEMP'], AuxData['RX_TEMP'])
+      calChirpFile = detCalibChirp(AuxData['TX_TEMP'], AuxData['RX_TEMP'])
+      calChirp = loadCalChirp(calChirpFile) 
     return
   else:
     return
