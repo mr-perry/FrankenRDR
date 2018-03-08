@@ -7,7 +7,7 @@
 #
 import os
 import struct
-from numpy import fromfile
+from numpy import fromfile, zeros, flip, shape
 import matplotlib.pyplot as plt
 
 def readAuxFile(fname):
@@ -110,8 +110,6 @@ def detCalibChirp(TxTemp, RxTemp):
   ext = '.dat'
   TxCalNames = ['m20tx', 'm15tx', 'm10tx', 'm05tx', 
                 'p00tx', 'p20tx', 'p40tx', 'p60tx']
-  RxCalNames = ['m20rx', 'p00rx', 'p20rx', 'p40rx', 'p60rx']
-  #
   # Define vectors for Tx and Rx temps
   #
   Tx = [-20, -15, -10, -5, 0, 20, 40, 60]
@@ -170,10 +168,13 @@ def loadCalChirp(_file, reorg=True, dt='<f'):
       # Perform the mapping as described in the notes above
       #
       print("I'm still waiting on F. to respond with answers to my questions concerning the order")
+      calChirp_reorg = zeros(4096)
+      calChirp_reorg[0:2048] = calChirp[0:2048]
+      calChirp_reorg[2048:] = flip(calChirp[2048:], axis=0)
   else:
     print('File {} for the calibrated chirp is not found. Please check the path and try again.'.format(_file))
     calChirp = []
-  return calChirp
+  return calChirp, calChirp_reorg
 
 def main():
   global auxFile
@@ -186,7 +187,12 @@ def main():
       AuxData = readRow(auxFile, _row) 
       print(AuxData['TX_TEMP'], AuxData['RX_TEMP'])
       calChirpFile = detCalibChirp(AuxData['TX_TEMP'], AuxData['RX_TEMP'])
-      calChirp = loadCalChirp(calChirpFile) 
+      calChirp, calChirp_reorg = loadCalChirp(calChirpFile) 
+      plt.subplot(2,1,1)
+      plt.plot(calChirp)
+      plt.subplot(2,1,2)
+      plt.plot(calChirp_reorg)
+      plt.show()
     return
   else:
     return
