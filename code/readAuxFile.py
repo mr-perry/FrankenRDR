@@ -110,6 +110,8 @@ def detCalibChirp(TxTemp, RxTemp):
   ext = '.dat'
   TxCalNames = ['m20tx', 'm15tx', 'm10tx', 'm05tx', 
                 'p00tx', 'p20tx', 'p40tx', 'p60tx']
+  RxCalNames = ['m20rx', 'p00rx', 'p20rx', 'p40rx', 
+                'p60rx']
   # Define vectors for Tx and Rx temps
   #
   Tx = [-20, -15, -10, -5, 0, 20, 40, 60]
@@ -178,9 +180,9 @@ def loadCalChirp(_file, reorg=True, dt='<f'):
 
 def main():
   global auxFile
-#  fname = '../data/e_0168901_001_ss19_700_a_a.dat'
-  fname = '../data/e_1601301_001_ss19_700_a_a.dat'
-  rowNum = range(1)
+  fname = '../data/e_0168901_001_ss19_700_a_a.dat'
+#  fname = '../data/e_1601301_001_ss19_700_a_a.dat'
+  rowNum = range(1000)
   auxFile = readAuxFile(fname)
   if auxFile != []:
     for _row in rowNum:

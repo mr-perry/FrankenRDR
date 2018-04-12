@@ -1,8 +1,9 @@
 #
 # Import other libraries
 #
-from os.path import isfile
-from numpy import fromfile
+import sys
+from os.path import isfile, basename
+from numpy import fromfile, dtype
 
 def parseEDRname(fname):
   """
@@ -18,27 +19,27 @@ def parseEDRname(fname):
   #
   # Subsurface sounding
   #
-  SSInstrMode = { 'SS01': {'Presum': 32, 'BitsPerSample': 8},
-                'SS02': {'Presum': 28, 'BitsPerSample': 6},
-                'SS03': {'Presum': 16, 'BitsPerSample': 4},
-                'SS04': {'Presum': 8, 'BitsPerSample': 8},
-                'SS05': {'Presum': 4, 'BitsPerSample': 6},
-                'SS06': {'Presum': 2, 'BitsPerSample': 4},
-                'SS07': {'Presum': 1, 'BitsPerSample': 8},
-                'SS08': {'Presum': 32, 'BitsPerSample': 6},
-                'SS09': {'Presum': 28, 'BitsPerSample': 4},
-                'SS10': {'Presum': 16, 'BitsPerSample': 8},
-                'SS11': {'Presum': 8, 'BitsPerSample': 6},
-                'SS12': {'Presum': 4, 'BitsPerSample': 4},
-                'SS13': {'Presum': 2, 'BitsPerSample': 8},
-                'SS14': {'Presum': 1, 'BitsPerSample': 6},
-                'SS15': {'Presum': 32, 'BitsPerSample': 4},
-                'SS16': {'Presum': 28, 'BitsPerSample': 8},
-                'SS17': {'Presum': 16, 'BitsPerSample': 6},
-                'SS18': {'Presum': 8, 'BitsPerSample': 4},
-                'SS19': {'Presum': 4, 'BitsPerSample': 8},
-                'SS20': {'Presum': 2, 'BitsPerSample': 6},
-                'SS21': {'Presum': 1, 'BitsPerSample': 4},
+  SSInstrMode = { 'SS01': {'Mode': 'SS01', 'Presum': 32, 'BitsPerSample': 8},
+                'SS02': {'Mode': 'SS02','Presum': 28, 'BitsPerSample': 6},
+                'SS03': {'Mode': 'SS03','Presum': 16, 'BitsPerSample': 4},
+                'SS04': {'Mode': 'SS04','Presum': 8, 'BitsPerSample': 8},
+                'SS05': {'Mode': 'SS05','Presum': 4, 'BitsPerSample': 6},
+                'SS06': {'Mode': 'SS06','Presum': 2, 'BitsPerSample': 4},
+                'SS07': {'Mode': 'SS07','Presum': 1, 'BitsPerSample': 8},
+                'SS08': {'Mode': 'SS08','Presum': 32, 'BitsPerSample': 6},
+                'SS09': {'Mode': 'SS09','Presum': 28, 'BitsPerSample': 4},
+                'SS10': {'Mode': 'SS10','Presum': 16, 'BitsPerSample': 8},
+                'SS11': {'Mode': 'SS11','Presum': 8, 'BitsPerSample': 6},
+                'SS12': {'Mode': 'SS12','Presum': 4, 'BitsPerSample': 4},
+                'SS13': {'Mode': 'SS13','Presum': 2, 'BitsPerSample': 8},
+                'SS14': {'Mode': 'SS14','Presum': 1, 'BitsPerSample': 6},
+                'SS15': {'Mode': 'SS15','Presum': 32, 'BitsPerSample': 4},
+                'SS16': {'Mode': 'SS16','Presum': 28, 'BitsPerSample': 8},
+                'SS17': {'Mode': 'SS17','Presum': 16, 'BitsPerSample': 6},
+                'SS18': {'Mode': 'SS18','Presum': 8, 'BitsPerSample': 4},
+                'SS19': {'Mode': 'SS19','Presum': 4, 'BitsPerSample': 8},
+                'SS20': {'Mode': 'SS20','Presum': 2, 'BitsPerSample': 6},
+                'SS21': {'Mode': 'SS21','Presum': 1, 'BitsPerSample': 4},
                }
   #
   # Receive only
@@ -65,8 +66,11 @@ def parseEDRname(fname):
                 'RO20': {'Presum': 2, 'BitsPerSample': 6},
                 'RO21': {'Presum': 1, 'BitsPerSample': 4},
                }
-
   if type(fname) is str:
+    #
+    # Get base file name
+    #
+    fname = basename(fname)
     fname = fname.split("_")
     EDRData = {'DataProduct': fname[0],
                'OrbitNum': fname[1][0:5],
@@ -79,12 +83,33 @@ def parseEDRname(fname):
                'ext': fname[6].split('.')[1]
               }
     if EDRData['OpMode'][0:2] == 'SS':
-      EDRData['OpMode'] = SSInstrMode[EDR['OpMode']]
-      print(EDRData['OpMode'])
-  return
+      EDRData['OpMode'] = SSInstrMode[EDRData['OpMode']]
+    elif EDRData['OpMode'][0:2] == "RO":
+      EDRData['OpMode'] = ROInstrMode[EDRData['OpMode']]
+  return EDRData
     
     
-def loadData(_file):
+def loadData(_file, OpMode):
   if isfile(_file):
-    data = fromfile(_file, dtype='<f') 
-   return 
+    if OpMode['BitsPerSample'] == 4:
+      dtype = '>i4'
+    elif OpMode['BitsPerSample'] == 6:
+      dtype = '>i6'
+    elif OpMode['BitsPerSample'] == 8:
+      dtype = '>i8'
+    print(OpMode['BitsPerSample'])
+    data = fromfile(_file, dtype=dtype) 
+    print(len(data))
+  else:
+    print('File not found')
+    sys.exit()
+  return 
+
+def main():
+  fname = '../data/e_0168901_001_ss19_700_a_s.dat'
+  EDRData = parseEDRname(fname)
+  loadData(fname, EDRData['OpMode'])
+  return
+
+if __name__ == '__main__':
+  main()
