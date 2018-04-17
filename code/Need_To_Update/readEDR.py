@@ -4,6 +4,7 @@
 import sys
 from os.path import isfile, basename
 from numpy import fromfile, dtype
+import struct
 
 def parseEDRname(fname):
   """
@@ -89,26 +90,71 @@ def parseEDRname(fname):
   return EDRData
     
     
-def loadData(_file, OpMode):
-  if isfile(_file):
-    if OpMode['BitsPerSample'] == 4:
-      dtype = '>i4'
-    elif OpMode['BitsPerSample'] == 6:
-      dtype = '>i6'
-    elif OpMode['BitsPerSample'] == 8:
-      dtype = '>i8'
-    print(OpMode['BitsPerSample'])
-    data = fromfile(_file, dtype=dtype) 
-    print(len(data))
-  else:
-    print('File not found')
-    sys.exit()
-  return 
+def readBlock(_file, rowNum, BitsPerSample):
+  """
+    This function will read in a block of data from the science telemetry
+    file and return the Ancilliary and Echo data for that block
+  """
+  #
+  # Determine record length
+  #
+  if BitsPerSample == 4: 
+    recLen = 1986
+  if BitsPerSample == 6: 
+    recLen = 2886
+  if BitsPerSample == 8: 
+    recLen = 3786
+  #
+  # See if file was a path or an object
+  #
+  if type(_file) is str:
+    _file = open(_file, 'rb')
+  #
+  # Point to the appropriate row within the binary data and read the record
+  #
+  _file.seek(rowNum*recLen)
+  rawData = _file.read(recLen)
+  #
+  # Split data; rawA - raw ancilliary
+  #  rawS - raw science data
+  #
+  rawA = rawData[0:186] 
+  rawS = rawData[186:]
+  #
+  # Set up Ancilliary Dictionary
+  #
+  AncilData = { 'FMT_LENGTH': struct.unpack(">h",  rawA[10:12])[0]}
+  #
+  # Decompress science data
+  #
+  return AncilData, rawS
+  
 
+def decompressData(rawScience, Compression, presum, bit_resolution):
+  """
+    This function decompresses the raw science data based on the
+    method of compression used as described in the ancilliary data file
+    as well as the PDS Label file
+  """
+  if Compression == 'Static' or Compression == 'Fixed':
+    """
+      For fixed scaling, the uncompressed value U of the echo sample is given by:
+        U = C 2^s / N
+      where
+        C is the compressed value
+        S is given by L - R + 8
+        N is the number of presummed echoes
+        L is the base 2 logarithm of N rounded to the nearest integer
+        R is the bit resolution of the compressed value (i.e. 4,6,8)
+    """
+    L = int(np.log2(N)) 
+    S = L - bit_resolution + 8
+    decompress
 def main():
   fname = '../data/e_0168901_001_ss19_700_a_s.dat'
   EDRData = parseEDRname(fname)
-  loadData(fname, EDRData['OpMode'])
+  for _i in range(100):
+    readBlock(fname, _i, 8)
   return
 
 if __name__ == '__main__':

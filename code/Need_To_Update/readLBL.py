@@ -16,6 +16,10 @@ def parseLBL(_file):
   #
   lblDic = {  'INSTR_MODE_ID': [],
               'PRI': [],
+              'GAIN_CONTROL': [],
+              'COMPRESSION': [],
+              'RECORD_BYTES': [],
+              'FILE_RECORDS': [] 
            }
   lines = _file.readlines()
   #
@@ -52,4 +56,10 @@ def parseLBL(_file):
       lblDic['GAIN_CONTROL'] = lines[_i].split('=')[1].strip() 
     if lines[_i].split('=')[0].strip() == 'MRO:COMPRESSION_SELECTION_FLAG':
       lblDic['COMPRESSION'] = lines[_i].split('=')[1].strip() 
+    if lines[_i].split('=')[0].strip() == 'RECORD_BYTES':
+      if lblDic['RECORD_BYTES'] == []:
+        lblDic['RECORD_BYTES'] = int(lines[_i].split('=')[1].strip()) 
+    if lines[_i].split('=')[0].strip() == 'FILE_RECORDS':
+      if lblDic['FILE_RECORDS'] == []:
+        lblDic['FILE_RECORDS'] = int(lines[_i].split('=')[1].strip()) 
   return lblDic 

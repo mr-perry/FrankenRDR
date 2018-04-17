@@ -5,6 +5,7 @@
 #
 # Import necessary libraries
 #
+import sys
 import os
 import struct
 from numpy import fromfile, zeros, flip, shape
@@ -58,7 +59,7 @@ def readRow(_file, rowNum, rowLen=267):
   # Set up dictionary
   #
   auxData ={'SCET_BLOCK_WHOLE': struct.unpack(">I", rawData[0:4])[0],
-            'SCET_BLOCK_WHOLE': struct.unpack(">H", rawData[4:6])[0],
+            'SCET_BLOCK_FRAC': struct.unpack(">H", rawData[4:6])[0],
             'EPHEMERIS_TIME': struct.unpack(">d", rawData[6:14])[0],
             'GEOMETRY_EPOCH': 'ERROR', 
             'SOLAR_LONGITUDE': struct.unpack(">d", rawData[37:45])[0],
@@ -139,7 +140,7 @@ def detCalibChirp(TxTemp, RxTemp):
   return calChirpFile
 
 
-def loadCalChirp(_file, reorg=True, dt='<f'):
+def loadCalChirp(_file, dt='<f'):
   """
     This function serves two purposes:
       1) Load the given calibrated chirp file (_file)
@@ -165,39 +166,11 @@ def loadCalChirp(_file, reorg=True, dt='<f'):
   """
   if os.path.isfile(_file):
     calChirp = fromfile(_file, dtype=dt)
-    if reorg:
-      #
-      # Perform the mapping as described in the notes above
-      #
-      print("I'm still waiting on F. to respond with answers to my questions concerning the order")
-      calChirp_reorg = zeros(4096)
-      calChirp_reorg[0:2048] = calChirp[0:2048]
-      calChirp_reorg[2048:] = flip(calChirp[2048:], axis=0)
+    #
+    # Okay, now combine the real and imaginary parts of the calibrated chirp
+    #
+    calChirp = chirp[0:2048] + chirp(2048:)*j 
   else:
     print('File {} for the calibrated chirp is not found. Please check the path and try again.'.format(_file))
     calChirp = []
-  return calChirp, calChirp_reorg
-
-def main():
-  global auxFile
-  fname = '../data/e_0168901_001_ss19_700_a_a.dat'
-#  fname = '../data/e_1601301_001_ss19_700_a_a.dat'
-  rowNum = range(1000)
-  auxFile = readAuxFile(fname)
-  if auxFile != []:
-    for _row in rowNum:
-      AuxData = readRow(auxFile, _row) 
-      print(AuxData['TX_TEMP'], AuxData['RX_TEMP'])
-      calChirpFile = detCalibChirp(AuxData['TX_TEMP'], AuxData['RX_TEMP'])
-      calChirp, calChirp_reorg = loadCalChirp(calChirpFile) 
-      plt.subplot(2,1,1)
-      plt.plot(calChirp)
-      plt.subplot(2,1,2)
-      plt.plot(calChirp_reorg)
-      plt.show()
-    return
-  else:
-    return
-
-if __name__ == '__main__':
-  main()
+  return calChirp
