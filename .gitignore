@@ -1,5 +1,8 @@
+*.csv
+*.npy
 data
 __pycache__
 *.swp
 *.pyc
 .DS_Store
+code/sharad_gram.pro
