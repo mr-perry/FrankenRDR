@@ -1,13 +1,13 @@
 #
 # Import Libraries
 #
+from scipy import signal
 import time
-from multiprocessing import Pool
 import pandas as pd
 import numpy as np
 import struct
 import bitstring
-from readLBL import loadLBL, parseLBL
+#from readLBL import loadLBL, parseLBL
 #from readAuxFile import readAuxFile, readRow, detCalibChirp, loadCalChirp
 #from readEDR import parseEDRname, readBlock
 import matplotlib.pyplot as plt
@@ -418,7 +418,125 @@ def parseAncilliary(data):
     ancilliaryData['OST_LINE']['SPARE4'] = OST_LINE[96:128].uint
   return ancilliaryData
 
-def loadEDR(fname):
+
+def readEDRrecord(_file, record, recLen, bps):
+  """
+    This function reads a single EDR record and returns the ancilliary 
+    and science data. Data are read and decoded based off their bit resolution
+    Input:
+      _file: File object identifier pointing to the data file containing the binary data
+    Output:
+      ancil: Data dictionary containing all the information parsed from the ancilliary data for the record
+      echoes: Decoded science data
+  """
+  #
+  # Make sure we are at the beginning of a record
+  #
+  _file.seek(0)
+  #
+  # Now fast forward to the appropriate location
+  _file.seek(record*recLen)
+  #
+  # Step 1: Read in binary data
+  #
+  rawData = _file.read(recLen)
+  #
+  # Separate ancil and echo data
+  #
+  # Step 2: Read and parse ancilliary data
+  #
+  ancil = rawData[:186]
+  #
+  # Parse Ancilliary Data
+  #
+  ancDic = parseAncilliary(ancil)
+  #
+  # Step 3: Separate Actual echoes
+  #
+  echoes = rawData[186:]
+  #
+  # Okay, now decode the data
+  # For 8-bit samples, there is a sample for every byte
+  # For 6-bit samples, there are 2 samples for every 3 bytes
+  # For 4-bit samples, there are 2 samples for every byte
+  #
+  # Making the vector have 4096 rows is to allow for proper decovolution of the
+  # calibrated chirp
+  #
+  decoded_data = np.zeros(4096, int)
+  #
+  # Step 4: Decode the science data based on the bit resolution
+  #
+  # Break Byte stream into Bit Stream
+  # This isn't necessary for the 8-bit resolution, but to keep the code
+  # clean, split the bytes up regardless of resolution
+  #
+  b = bitstring.BitArray(echoes)
+  for _j in range(0, len(b), BitsPerSample):
+    decoded_data[int(_j/BitsPerSample)] = b[_j:_j+BitsPerSample].int 
+  return decoded_data, ancDic
+
+def decompressSciData(data, compression):
+  """
+    This function decompresses the data based off page 8 of the 
+    SHALLOW RADAR EXPERIMENT DATA RECORD SOFTWARE INTERFACE SPECIFICATION.
+    If the compression type is 'Static' (i.e. False):
+       U = C*2**S / N
+         C is the Compressed Data
+         S = L - R + 8
+            L is base 2 log of N rounded UP to the nearest integer
+            R is the bit resolution of the compressed values
+         N is the number of pre-summed echoes
+    If the compression type is 'dynamic' (i.e. True):
+      NOT WORKING YET
+      U = C*2**S/N
+        C is the compressed data
+        N is the number of pre-summed echoes
+        S = SDI for SDI <= 5
+        S = SDI-6 for 5 < SDI <= 16
+        S = SDI-16 for SDI > 16
+          where SDI is the SDI_BIT_FIELD parameter from ANCILLIARY DATA
+  """
+  # Step 5: Decompress the data
+  # Note: Only Static decompression works at this time
+  # 
+  if compression == False: # Static scaling
+    L = np.ceil(np.log2(int(instrPresum)))
+    R = BitsPerSample
+    S = L - R + 8
+    N = instrPresum
+    decompressed_data = data * (np.power(2, S)/N)
+    return decompressed_data
+  elif compression == True:#dynamic scaling
+    print('This is not yet available.')
+    sys.exit()
+
+def rangeCompression(fname, filtering='Match'):
+  """
+     The following steps must occur during range compression:
+      1) A single record is read in
+      2) The ancilliary data is parsed and decoded
+      3) Parse the science data (echoes)
+      4) Decode the echoes based on their bit resolution
+      5) Decompress the echoes using either the static or dynamic methods described on page 
+         8 of the SHALLOW RADAR EXPERIMENT DATA RECORD SOFTWARE INTERFACE SPECIFICATION
+      6) Once record is decompressed determine which calibrated chirp file is needed
+      7) Extend the length of a data record from 3600 to 4096 using zero padding
+      8) Multiply this raw data by the complex exponential of 2*pi*i*F_c*t,
+         where F_c is equal to (80/3 - 20) MHz, and t is a vector 4096 samples long containing
+         linearly increasing values starting from zero, and each spaced 3/80 microseconds apart.
+      9) Compute the FFT of the result
+     10) Select only the central 2048 samples of the complex spectrum, that is from sample 1025
+         to sample 3072 if spectrum are ordered for increasing frequency.
+     11) Multiply the result by the complex conjugate of the reference chirp
+     12) Compute the IFFT of the result
+  """
+  #
+  # Set up some variables needed later
+  #
+  F_c = (80/3 - 20)  
+  t = np.linspace(0, 4096*0.0375, num=4096) 
+  compExp = 2*np.pi*1j*F_c*t
   #
   # Determine record length based off bits per sample
   #
@@ -431,75 +549,86 @@ def loadEDR(fname):
   #
   # Check if file exists and begin processing
   #
-  if os.path.isfile(fname):
+  if not os.path.isfile(fname):
+    print('File does not exist...exiting')
+  else:
     _file = open(fname, 'rb')
     fsize = os.path.getsize(fname)
     length = fsize/recLen
     #
     # Make empty array for EDR data
     #
-    EDRData = np.zeros([3600, int(length)], float)
+    EDRData = np.zeros([2048, int(length)], complex)
+    #
+    # Begin range processing
+    #
     for _i in range(int(length)): # Go through all the records
       #
-      # Make sure we are at the beginning of a record
+      # Read in single record
       #
-      _file.seek(0)
+      sci_data, ancDic = readEDRrecord(_file, _i, recLen, BitsPerSample)
       #
-      # Now fast forward to the appropriate location
-      _file.seek(_i*recLen)
+      # Decompress the science data
       #
-      # Read in binary data
+      echoes = decompressSciData(sci_data, ancDic['OST_LINE']['COMPRESSION_SELECTION'])
       #
-      rawData = _file.read(recLen)
+      # Determine calibrated chirp
       #
-      # Separate ancil and echo data
+      calChirp = detChirpFiles(AuxDF['TX_TEMP'][_i], AuxDF['RX_TEMP'][_i])
       #
-      ancil = rawData[:186]
+      #  8) Multiply this raw data by the complex exponential of 2*pi*i*F_c*t,
+      #     where F_c is equal to (80/3 - 20) MHz, and t is a vector 4096 samples long containing
+      #     linearly increasing values starting from zero, and each spaced 3/80 microseconds apart.
       #
-      # Parse Ancilliary Data
+      decom_data_c = echoes * compExp
       #
-      ancDic = parseAncilliary(ancil)
+      # Compute FFT
       #
-      # Separate Actual echoes
+      # The values in the result follow so-called “standard” order: If A = fft(a, n), 
+      # then A[0] contains the zero-frequency term (the sum of the signal), which is 
+      # always purely real for real inputs. Then A[1:n/2] contains the positive-frequency 
+      # terms, and A[n/2+1:] contains the negative-frequency terms, in order of decreasingly negative frequency.
       #
-      echoes = rawData[186:]
+      echoSpec = np.fft.fft(decom_data_c)
       #
-      # Okay, now decode the data
-      # For 8-bit samples, there is a sample for every byte
-      # For 6-bit samples, there are 2 samples for every 3 bytes
-      # For 4-bit samples, there are 2 samples for every byte
+      # Now reorder FFT so we can take out the central frequencies
+      # 
+      echoSpec = np.fft.fftshift(echoSpec)
       #
-      decoded_data = np.zeros(3600, int)
+      # Select on the central 2048 frequencies
+      # Does this need to be a more robust windowing functions???
       #
-      # Break Byte stream into Bit Stream
-      # This isn't necessary for the 8-bit resolution, but to keep the code
-      # clean, split the bytes up regardless of resolution
+      echoSpec = echoSpec[1024:3072]
       #
-      b = bitstring.BitArray(echoes)
-      for _j in range(0, len(b), BitsPerSample):
-        decoded_data[int(_j/BitsPerSample)] = b[_j:_j+BitsPerSample].int 
-      if ancDic['OST_LINE']['COMPRESSION_SELECTION'] == False: # Static scaling
-        L = np.ceil(np.log2(int(instrPresum)))
-        decompressed_data = decoded_data * (np.power(2, (L - BitsPerSample + 8)/instrPresum)) 
-      elif ancDic['OST_LINE']['COMPRESSION_SELECTION'] == True:#dynamic scaling
-        print('This is not yet available.')
-        sys.exit()
+      # Remove the calibrated chirp from the science data (i.e. Range compression)
       #
-      # Now decompress the record
+      if filtering == 'Match':
+        #
+        # Calculate the complex conjugate of the calibrated chirp
+        #
+        dechirp = np.conj(calChirp)
+        #
+        # Emply match filtering techn
+        #
+        dechirped = echoSpec * dechirp
+      elif filtering == 'Inverse':
+        dechirpEchoSpec = echoSpec / calChirp
       #
-      EDRData[:, _i] = decoded_data
+      # Now, window the resulting spectrum for sidelobe supression
+      #
+      #
+      # Now, reorder the dechirped Spectrum and IFFT
+      #
+      EDRData[:, _i] = np.fft.ifft(np.fft.ifftshift(dechirped))
   return EDRData
 
 
 def detChirpFiles(TxTemp, RxTemp):
   """
   This function determines the appropriate calibrated chirp file to use
-  for range compression. This is solely based off the temperatures
-  of the Tx and Rx.
+  for range compression and returns the decoded calibrated chirp. 
+  This is solely based off the temperatures of the TxTemp and RxTemp.
   """
-  if len(TxTemp) != len(RxTemp):
-    print('ERROR! Tx Temperature and Rx Temperature arrays must have equal length!')
-    sys.exit()
   calibRoot = '../calib/'
   calibName = 'reference_chirp'
   ext = '.dat'
@@ -531,9 +660,13 @@ def detChirpFiles(TxTemp, RxTemp):
   calChirpFile = calibRoot + calibName + '_' + \
                  TxCalNames[TxDiff.index(min(TxDiff))] + '_' + \
                  RxCalNames[RxDiff.index(min(RxDiff))] + ext
-  if not os.path.isfile(calChirpFile):
-    calChirpFile = []
-  return calChirpFile
+  if os.path.isfile(calChirpFile):
+    calChirp = np.fromfile(calChirpFile, dtype='<f')
+    calChirp = calChirp[:2048] + 1j*calChirp[2048:]
+  else:
+    print('Calibrated chirp file not found...exiting.')
+    sys.exit()
+  return calChirp
 
 def main():
   #
@@ -551,12 +684,15 @@ def main():
   # These will be items read from the LBL file that are necessary for proper
   # processing and decoding
   #
-  global length, instrMode, instrPresum, BitsPerSample 
+  global nrec, instrMode, presum_onboard, BitsPerSample, AuxDF 
   #
   # 
   # TEST DATA
   #
-  td = 3
+  td = 4
+  fil = 'Match'
+  fft_length = 1536
+  compression = False;
   if td == 0:
     auxname = '../data/e_0168901_001_ss19_700_a_a.dat'
     lblname = '../data/e_0168901_001_ss19_700_a.lbl' 
@@ -573,15 +709,19 @@ def main():
     auxname = '../data/e_0169401_001_ss18_700_a_a.dat'
     lblname = '../data/e_0169401_001_ss18_700_a.lbl' 
     edrname = '../data/e_0169401_001_ss18_700_a_s.dat' 
+  elif td == 4: #VERY FLAT REGION
+    auxname = '../data/e_0323403_001_ss19_700_a_a.dat'
+    lblname = '../data/e_0323403_001_ss19_700_a.lbl' 
+    edrname = '../data/e_0323403_001_ss19_700_a_s.dat' 
   #
   # Parse important data from label file
   #
   print('Reading label file...')
   lblDic = parseLBLFile(lblname)
   print('Finished reading label file...')
-  length = lblDic['FILE_RECORDS']
+  nrec = lblDic['FILE_RECORDS']			# Number of records
   instrMode = lblDic['INSTR_MODE_ID']['Mode']
-  instrPresum = lblDic['INSTR_MODE_ID']['Presum']
+  presum_onboard = lblDic['INSTR_MODE_ID']['Presum']
   BitsPerSample = lblDic['INSTR_MODE_ID']['BitsPerSample']
   #
   # Okay, now that the label file has been parsed for the necessary information
@@ -589,17 +729,139 @@ def main():
   print('Reading Auxilliary file...')
   AuxDF = parseAuxFile(auxname)  
   print('Finished reading Auxilliary file...')
+  #############################################################################
   #
-  # To keep this simple for the time being, let's load in the entire EDR
-  # compressed binary file, then decompress it.
   #
-  # Load in EDR Data
+  n_range = 3600					# Typical SHARAD record length
+  timing_error = 12.5 / 1.0e6				#12.5-us timing error; I don't know if I'll actually need this
+  delay_res = 135.0e-06 / 3600.				# Delay resolution (sec)
+  sharad_ipp = 1. / 700.28				# Pulse interval (sec)
+  nflat = 49152 / presum_onboard			# No. of raw pulses at presum-1
+  presum_proc = 16 if fft_length <= 1536 else 8		# Set internal presumming to balance the speed with radargram
+ 							# aliasing. Really should not push the aperture length much
+							# past 3072 in presum-4 units (18-seconds). Presum factor 
+							# 16X for PDS default, 8X for "long" mode.
+  nsums = np.copy(nrec)
   #
+  # Determine record length based off bits per sample
+  #
+  if BitsPerSample == 4:
+    recLen = 1986
+  elif BitsPerSample == 6:
+    recLen = 2886
+  elif BitsPerSample == 8:
+    recLen = 3786
+  ############################################################################
+  #
+  # At this point in the FPB, Bruce reads the header file and constructs
+  # Vx and Vz polynomials...do I need to do this?
+  #
+  # Then he reads maptrack.out for information, can I get this from ancilliary data? 
+  #
+  # 
+  #
+  # Now he makes a windowing function, but zeros out half of the spectrum...I need to look through
+  # some literature about this
+  #
+  ############################################################################
   print('Reading, decoding, and decompressing science telemetry file...')
-  EDR = loadEDR(edrname)
-  print('Finished with science telemetry file...')
-  plt.imshow(EDR)
-  plt.show()
+  if nflat >= nsums:
+    nflat = nsums - 1 
+  fft_length_pass = nflat
+  #
+  # Check if EDR file exists
+  #
+  if not os.path.isfile(edrname):
+    print('File does not exist...exiting')
+  else:
+    _file = open(edrname, 'rb')
+  #
+  # All of the input pulses in groups
+  #
+  nsample = -1
+  for _k in range(0, nsums, int(presum_proc/presum_onboard)):
+    nsample += 1
+    if _k+(presum_proc/presum_onboard-1) < nsums:
+      presum_record = np.zeros(2048, complex)		# Zero out this stack
+      range_record = np.zeros(4096, float)		# Zero out this stack
+      #
+      # Point to the beginning of this data block in the raw data file
+      #
+      #
+      # Make sure we are at the beginning of a record
+      #
+      _file.seek(0)
+      #
+      # Now fast forward to the appropriate location
+      _file.seek(_k*recLen)
+      for _m in range(0, int(presum_proc/presum_onboard)):
+        rawData = _file.read(recLen)
+        #ancil = rawData[:186]
+        #
+        # Parse Ancilliary Data
+        #
+        #ancDic = parseAncilliary(ancil)
+        #
+        # Step 3: Separate Actual echoes
+        #
+        echoes = rawData[186:]
+        #
+        # Decode the echoes
+        #
+        #
+        # Okay, now decode the data
+        # For 8-bit samples, there is a sample for every byte
+        # For 6-bit samples, there are 2 samples for every 3 bytes
+        # For 4-bit samples, there are 2 samples for every byte
+        #
+        # Making the vector have 4096 rows is to allow for proper decovolution of the
+        # calibrated chirp
+        #
+        decoded_data = np.zeros(4096, int)
+        #
+        # Step 4: Decode the science data based on the bit resolution
+        #
+        # Break Byte stream into Bit Stream
+        # This isn't necessary for the 8-bit resolution, but to keep the code
+        # clean, split the bytes up regardless of resolution
+        #
+        b = bitstring.BitArray(echoes)
+        for _j in range(0, len(b), BitsPerSample):
+          decoded_data[int(_j/BitsPerSample)] = b[_j:_j+BitsPerSample].int 
+        #
+        # Now decompress the data
+        #
+        if compression == False: # Static scaling
+          L = np.ceil(np.log2(int(presum_onboard)))
+          R = BitsPerSample
+          S = L - R + 8
+          N = presum_onboard
+          decompressed_data = decoded_data * (np.power(2, S)/N)
+        elif compression == True:#dynamic scaling
+          print('This is not yet available.')
+          sys.exit()
+        range_record = range_record + decompressed_data
+      #
+      # Go to Complex spectral domain and window
+      #
+      window = np.ones(len(range_record))
+      temp = 
+      temp = np.fft.fft(range_record)
+      #
+      # Determine calibrated chirp
+      # 
+      calChirp = detChirpFiles(AuxDF['TX_TEMP'][_k], AuxDF['RX_TEMP'][_k])
+      dechirp = np.conj(calChirp)
+      
+      presum_record = np.fft.
+#  EDR = rangeCompression(edrname, filtering=fil)
+  #
+  # Make window for azimuth FFT
+  #
+#  window_azi = 0.5*(1.0-np.cos(2.0*np.pi*np.arange(fft_length)/(sum_length-1)))
+  
+#  np.save('EDR.npy', EDR)
+#  print('Finished with science telemetry file...')
   return
 
 if __name__ == '__main__':
