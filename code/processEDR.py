@@ -12,8 +12,10 @@ from readLBL import parseLBLFile
 from readAux import parseAuxFile
 from readAnc import parseAncilliary
 from readEDR import readEDRrecord, decompressSciData
-from readChirp import detChirpFiles, chirpCompression
-from makeWindow import makeWindow
+from ProcessingTools import makeWindow
+from SARProcessing import rangeCompression
+from readChirp import detChirpFiles
+from plottingFunctions import plotEDR, bytescl
 import matplotlib.pyplot as plt
 import glob, os, sys
 
@@ -23,15 +25,11 @@ def writeLog(log, string):
     log.write(string + '\n')
 
 
-def main(auxname, lblname, edrname, win_type=3, fil_type='Match', compression=False, verb=True):
+def main(auxname, lblname, edrname, win_type=4, fil_type='Match', compression=False, verb=True):
   """
     This python script simply reads in EDR data and returns the chirp
     compressed science record, which should be coplex voltage
   """
-  print("Here")
-  delay_res = 135.00e-06 / 3600.			# Delay resolution (sec) of each bin
-  sharad_ipp = 1. / 700.28				# Time (sec) between start of each pulse
-  c = 2.998e08 
   logFile = '../runs/processEDR.log'
   _log = open(logFile, 'w')
   writeLog(_log, 'Reading label file...')
@@ -47,7 +45,7 @@ def main(auxname, lblname, edrname, win_type=3, fil_type='Match', compression=Fa
   #
   # Save Auxilliary File
   #
-  AuxDF.to_csv('../runs/processEDR.csv')
+  AuxDF.to_csv('../runs/LikeMike.csv')
   #
   # Determine to Bits per Sample
   #
@@ -63,6 +61,7 @@ def main(auxname, lblname, edrname, win_type=3, fil_type='Match', compression=Fa
     writeLog(_log, 'Instrument Mode:\t{}'.format(instrMode))
     writeLog(_log, 'Bits Per Sample:\t{}'.format(BitsPerSample))
     writeLog(_log, 'Record Length:\t{}'.format(recLen))
+  #
   #
   # Construct window
   #
@@ -84,13 +83,13 @@ def main(auxname, lblname, edrname, win_type=3, fil_type='Match', compression=Fa
     #
     sci, ancil = readEDRrecord(_file1, _i, recLen, BitsPerSample)
     #
-    # Decompress science data
-    #
-    sci = decompressSciData(sci, compression, InstrPresum, BitsPerSample)
-    #
     # Parse Ancilliary Datq
     #
     ancil = parseAncilliary(ancil) 
+    #
+    # Decompress science data
+    #
+    sci = decompressSciData(sci, compression, InstrPresum, BitsPerSample)
     #
     # Determine calibrated chirp
     #
@@ -98,16 +97,20 @@ def main(auxname, lblname, edrname, win_type=3, fil_type='Match', compression=Fa
     #
     # Perform chirp compression
     #
-    EDRData[:,_i] = chirpCompression(sci, calChirp, window, fil_type="Match")
-  np.save('../runs/EDRData.npy', EDRData)
+    EDRData[:,_i] = rangeCompression(sci, calChirp, window, fil_type="Match")
+  if verb:
+    writeLog(_log, 'Decompession finished at:\t{}'.format(datetime.now()))
+    writeLog(_log, 'Converting to presum:\t{}'.format(presum_proc))
+  np.save('../runs/processEDR4.npy', EDRData)
   return
   
 if __name__ == '__main__':
   verb = True
-  win_type = 0
+  win_type = 4
   td = 4						# Which test set
   fil_type = 'Match'					# Chirp compression method
   compression = False;					# Static compression
+  presum_proc = 16					# Bring processing to presum-16
   #
   # BEGIN INPUT DATA
   #
@@ -131,4 +134,8 @@ if __name__ == '__main__':
     auxname = '../data/e_0323403_001_ss19_700_a_a.dat'
     lblname = '../data/e_0323403_001_ss19_700_a.lbl'
     edrname = '../data/e_0323403_001_ss19_700_a_s.dat'
-  main(auxname, lblname, edrname, win_type=win_type, fil_type=fil_type, compression=compression, verb=verb) 
+  elif td == 5: #ANOTHER SHORT SEMI FLAT REGION
+    auxname = '../data/e_2777101_001_ss19_700_a_a.dat'
+    lblname = '../data/e_2777101_001_ss19_700_a.lbl'
+    edrname = '../data/e_2777101_001_ss19_700_a_s.dat'
+  main(auxname, lblname, edrname, presum_proc, win_type=win_type, fil_type=fil_type, compression=compression, verb=verb) 
