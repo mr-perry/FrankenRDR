@@ -45,7 +45,7 @@ def readEDRrecord(_file, record, recLen, bps):
   # Making the vector have 4096 rows is to allow for proper decovolution of the
   # calibrated chirp
   #
-  decoded_data = np.zeros(4096, int)
+  decoded_data = np.zeros(3600, int)
   #
   # Step 4: Decode the science data based on the bit resolution
   #
@@ -59,7 +59,7 @@ def readEDRrecord(_file, record, recLen, bps):
   return decoded_data, ancil
 
 
-def decompressSciData(data, compression):
+def decompressSciData(data, compression, presum, bps):
   """
     This function decompresses the data based off page 8 of the
     SHALLOW RADAR EXPERIMENT DATA RECORD SOFTWARE INTERFACE SPECIFICATION.
@@ -84,14 +84,12 @@ def decompressSciData(data, compression):
   # Note: Only Static decompression works at this time
   #
   if compression == False: # Static scaling
-    L = np.ceil(np.log2(int(instrPresum)))
-    R = BitsPerSample
+    L = np.ceil(np.log2(int(presum)))
+    R = bps
     S = L - R + 8
-    N = instrPresum
+    N = presum
     decompressed_data = data * (np.power(2, S)/N)
     return decompressed_data
   elif compression == True:#dynamic scaling
     print('This is not yet available.')
     sys.exit()
-
-
