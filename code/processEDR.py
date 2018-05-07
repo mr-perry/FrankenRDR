@@ -15,7 +15,7 @@ from readEDR import readEDRrecord, decompressSciData
 from ProcessingTools import makeWindow
 from SARProcessing import rangeCompression
 from readChirp import detChirpFiles
-from plottingFunctions import plotEDR, bytescl
+from plottingFunctions import plotEDR, bytescl, rdr2san
 import matplotlib.pyplot as plt
 import glob, os, sys
 
@@ -25,12 +25,12 @@ def writeLog(log, string):
     log.write(string + '\n')
 
 
-def main(auxname, lblname, edrname, win_type=4, fil_type='Match', compression=False, verb=True):
+def main(runName, auxname, lblname, edrname, win_type=4, fil_type='Match', compression=False, verb=True):
   """
     This python script simply reads in EDR data and returns the chirp
     compressed science record, which should be coplex voltage
   """
-  logFile = '../runs/processEDR.log'
+  logFile = '../runs/' + str(runName) + '.log'
   _log = open(logFile, 'w')
   writeLog(_log, 'Reading label file...')
   lblDic = parseLBLFile(lblname)
@@ -42,10 +42,6 @@ def main(auxname, lblname, edrname, win_type=4, fil_type='Match', compression=Fa
   writeLog(_log, 'Reading Auxilliary file...')
   AuxDF = parseAuxFile(auxname, df=True)
   writeLog(_log, 'Finished reading Auxilliary file...')
-  #
-  # Save Auxilliary File
-  #
-  AuxDF.to_csv('../runs/LikeMike.csv')
   #
   # Determine to Bits per Sample
   #
@@ -93,21 +89,24 @@ def main(auxname, lblname, edrname, win_type=4, fil_type='Match', compression=Fa
     #
     # Determine calibrated chirp
     #
-    calChirp = detChirpFiles(AuxDF['TX_TEMP'][_i], AuxDF['RX_TEMP'][_i], reorder=True, conj=True)
+    calChirp = detChirpFiles(AuxDF['TX_TEMP'][_i], AuxDF['RX_TEMP'][_i])
     #
     # Perform chirp compression
     #
-    EDRData[:,_i] = rangeCompression(sci, calChirp, window, fil_type="Match")
+    EDRData[:,_i] = rangeCompression(sci, calChirp, window, fil_type="Match", diag=False)
   if verb:
     writeLog(_log, 'Decompession finished at:\t{}'.format(datetime.now()))
     writeLog(_log, 'Converting to presum:\t{}'.format(presum_proc))
-  np.save('../runs/processEDR4.npy', EDRData)
+  fname = '../runs/' + str(runName) + '.npy'
+  np.save(fname, EDRData)
+  plotEDR(EDRData, fname=runName, rel=True)
   return
   
 if __name__ == '__main__':
+  runName = 'Test'
   verb = True
   win_type = 4
-  td = 4						# Which test set
+  td = 6						# Which test set
   fil_type = 'Match'					# Chirp compression method
   compression = False;					# Static compression
   presum_proc = 16					# Bring processing to presum-16
@@ -138,4 +137,8 @@ if __name__ == '__main__':
     auxname = '../data/e_2777101_001_ss19_700_a_a.dat'
     lblname = '../data/e_2777101_001_ss19_700_a.lbl'
     edrname = '../data/e_2777101_001_ss19_700_a_s.dat'
-  main(auxname, lblname, edrname, presum_proc, win_type=win_type, fil_type=fil_type, compression=compression, verb=verb) 
+  elif td == 6: #Bruce's test region
+    auxname = '../data/e_0879801_001_ss19_700_a_a.dat'
+    lblname = '../data/e_0879801_001_ss19_700_a.lbl'
+    edrname = '../data/e_0879801_001_ss19_700_a_s.dat'
+  main(runName, auxname, lblname, edrname, win_type=win_type, fil_type=fil_type, compression=compression, verb=verb) 
