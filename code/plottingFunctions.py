@@ -10,7 +10,7 @@ def bytescl(array, mindata=None, maxdata=None, top=255):
   scl = np.maximum(np.minimum(((top+0.9999)*(array-mindata)/(maxdata-mindata)).astype(np.int16), top),0)
   return scl
 
-def rdr2san(data, maxdb=40, top=255):
+def rdr2san(data, fname='rdr2san', maxdb=0, top=255):
   pow_out = np.power(np.abs(data), 2)			# Convert data to power
   db = 10 * np.log10(pow_out)				# decibels 
    
@@ -19,16 +19,24 @@ def rdr2san(data, maxdb=40, top=255):
   sig[np.where(sig > 255)] = 255.			# Clip values greater than MAXDB
 #        print,'Minimum byte-scaled signal-above-noise is ',min(sig)
 #        print,'Maximum byte-scaled signal-above-noise is ',max(sig)
+  imName = '../runs/' + str(fname) + '.eps'
   plt.imshow(sig, cmap='gray')
-  plt.savefig('../runs/rdr2san.eps', format='eps', dpi=1000)
+  plt.savefig(imName, format='eps', dpi=1000)
   return
 
-def plotEDR(data, pmin=0.0, pmax=40):
-  pow_out = np.power(np.abs(data), 2)
+def plotEDR(data, fname='plotEDR', rel=True, pmin=0.0, pmax=40):
+  if rel:
+    pow_out = np.power(np.abs(data), 2) / np.power(np.abs(np.max(data, axis=0)),2)
+    pmax = 0
+    pmin = -15
+  else:
+    pow_out = np.power(np.abs(data), 2) / np.power(np.abs(np.max(data)), 2)
   db = 10 * np.log10( pow_out )					# this is how Bruce calcs. dB
+  print(np.max(db), np.min(db))
   pic = bytescl(db, mindata = pmin, maxdata = pmax)  
+  imName = '../runs/' + str(fname) + '.eps'
   plt.imshow(pic, cmap='gray')
-  plt.savefig('../runs/processEDR.eps', format='eps', dpi=1000)
+  plt.savefig(imName, format='eps', dpi=2000)
   return
 
 def main():
