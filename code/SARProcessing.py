@@ -9,10 +9,10 @@ def rangeCompression(sci, calChirp, window, fil_type='Match', diag=False):
       calChirp - Complex conjugate of the cal. chirp spectrum
       fil_type  - Match or Inverse
   """
-  Fc = (80./3. - 20.)                                      # MHz
-  dt = (3./80.)                                           # Microseconds
+  Fc = (80./3. - 20.)*1.e6                                    # MHz
+  dt = (3./80.)*1.e-6                                           # Microseconds
   t = np.arange(0,4096*dt, dt)                          # Time vector
-  arg = np.arange(0,4096) * 2.0 * np.pi * Fc*1.0e6 * dt*1e-6
+  arg = np.arange(0,4096) * 2.0 * np.pi * Fc * dt
   pha_shift = np.cos(arg) + 1j*np.sin(arg)		 # Complex exponential using Euler's formula
   #
   # Check length of the science data
@@ -22,10 +22,12 @@ def rangeCompression(sci, calChirp, window, fil_type='Match', diag=False):
     echoes[:len(sci)] = sci
   echoes = echoes * pha_shift
   #
-  # Compute the FFT
+  # Compute the FFT and place on same scale as the calibrated chirp
   #
-  ecSpec = np.fft.fft(echoes)
-  ecFreq = np.fft.fftfreq(len(echoes), d=dt*10**-6)
+  ecSpec = np.fft.fft(echoes) / len(echoes)
+  ecFreq = np.fft.fftfreq(len(echoes), d=dt)
+  if diag:
+    print(ecFreq[1024], ecFreq[2047], ecFreq[2048], ecFreq[3072])
   #
   # Take central 2048 samples
   #
@@ -34,9 +36,12 @@ def rangeCompression(sci, calChirp, window, fil_type='Match', diag=False):
   ecSpec = ecSpec[st:en]
   ecFreq = ecFreq[st:en]
   #
-  # Multiply chirp by length of 2048 to put in same FFT units as Python FFT
-  #
-  calChirp = calChirp * len(ecSpec)
+  # Shift the window to maximum of ecSpec
+  # 
+  #mx = np.where(ecSpec == np.amax(ecSpec))
+  #md_wn = len(window)/2 - 1
+  #sft = int(mx[0][0] - md_wn)
+  #window = np.roll(window, sft) 
   #
   # Perform Chirp compression
   #
@@ -45,18 +50,19 @@ def rangeCompression(sci, calChirp, window, fil_type='Match', diag=False):
   elif fil_type == "Inverse":
     temp = window * (ecSpec / np.conj(calChirp))
   #
-  # Inverse Fourier transform
+  # Inverse Fourier transform and fix scaling
   #
-  decomp = np.fft.ifft(temp) 
+  decomp = np.fft.ifft(temp) * len(temp) 
   if diag:
-    plt.subplot(4,1,1)
+    plt.subplot(5,1,1)
     plt.plot(np.power(np.abs(ecSpec), 2))
-    plt.subplot(4,1,2)
+    plt.subplot(5,1,2)
+    plt.plot(window)
+    plt.subplot(5,1,3)
     plt.plot(np.power(np.abs(calChirp), 2))
-    plt.subplot(4,1,3)
+    plt.subplot(5,1,4)
     plt.plot(np.power(np.abs(temp),2 ))
-    plt.subplot(4,1,4)
+    plt.subplot(5,1,5)
     plt.plot(np.power(np.abs(decomp),2 ))
     plt.show()
-    sys.exit()
   return decomp
