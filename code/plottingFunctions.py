@@ -13,6 +13,7 @@ def bytescl(array, mindata=None, maxdata=None, top=255):
 def rdr2san(data, fname='rdr2san', maxdb=0, top=255):
   pow_out = np.power(np.abs(data), 2)			# Convert data to power
   db = 10 * np.log10(pow_out)				# decibels 
+  maxdb = np.amax(db)
    
   sig = db/maxdb*255
   sig[np.where(sig < 0)] = 0.				# Zero out values below noise floor
@@ -28,14 +29,16 @@ def plotEDR(data, fname='plotEDR', rel=True, pmin=0.0, pmax=40):
   if rel:
     pow_out = np.power(np.abs(data), 2) / np.power(np.abs(np.max(data, axis=0)),2)
     pmax = 0
-    pmin = -15
+    pmin = -20
   else:
     pow_out = np.power(np.abs(data), 2) / np.power(np.abs(np.max(data)), 2)
   db = 10 * np.log10( pow_out )					# this is how Bruce calcs. dB
   print(np.max(db), np.min(db))
   pic = bytescl(db, mindata = pmin, maxdata = pmax)  
+  bmpName = '../runs/' + str(fname) + '.bmp'
   imName = '../runs/' + str(fname) + '.eps'
   plt.imshow(pic, cmap='gray')
+  plt.imsave(bmpName, pic, cmap='gray')
   plt.savefig(imName, format='eps', dpi=2000)
   return
 
