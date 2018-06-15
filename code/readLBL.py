@@ -107,7 +107,7 @@ def parseLBLFile(fname):
       if lines[_i].split('=')[0].strip() == 'MRO:MANUAL_GAIN_CONTROL':
         lblDic['GAIN_CONTROL'] = lines[_i].split('=')[1].strip()
       if lines[_i].split('=')[0].strip() == 'MRO:COMPRESSION_SELECTION_FLAG':
-        lblDic['COMPRESSION'] = lines[_i].split('=')[1].strip()
+        lblDic['COMPRESSION'] = lines[_i].split('=')[1].strip().strip('"')
       if lines[_i].split('=')[0].strip() == 'RECORD_BYTES':
         if lblDic['RECORD_BYTES'] == []:
           lblDic['RECORD_BYTES'] = int(lines[_i].split('=')[1].strip())

@@ -23,7 +23,7 @@ def ProcessingPresum(data, instrPresum, presum_proc):
   return presumRec
 
 
-def makeWindow(win_type, length=2048, beta=0):
+def makeWindow(beta, length=2048):
   """
     Function for writing a windowing function
     Inputs:
@@ -37,29 +37,18 @@ def makeWindow(win_type, length=2048, beta=0):
   # Construct the window function
   #
   win_str ='Window function applied to data: '
-  if win_type == 0:
-    window = np.ones(2048)                                      # Uniform weighting
-    win_str += 'Uniform weighting'
-  elif win_type == 1:
-    #
-    # Cosine bell
-    window = np.ones(2048)                                      # Uniform weighting
-    win_str += 'Uniform weighting'
-  elif win_type == 2:
-    window = np.bartlett(length)
-    win_str += 'Bartlett Window'
-  elif win_type == 3:
-    window = np.hanning(length)
-    win_str += 'Hanning Window'
-  elif win_type == 4:
-    window = np.hamming(length)
-    win_str += 'Hamming Window'
-  elif win_type == 5:
-    window = np.blackman(length)
-    win_str += 'Blackman Window'
-  elif win_type == 6:
-    window = np.kaiser(length, beta)
-    win_str += 'Kaiser Window'
-  else:
-    writeLog(_log, 'WARNING: No windowing function selected!')
+#  elif win_type == 2:
+#    window = np.bartlett(length)
+#    win_str += 'Bartlett Window'
+#  elif win_type == 3:
+#    window = np.hanning(length)
+#    win_str += 'Hanning Window'
+#  elif win_type == 4:
+#    window = np.hamming(length)
+#3    win_str += 'Hamming Window'
+ # elif win_type == 5:
+#    window = np.blackman(length)
+#    win_str += 'Blackman Window'
+  window = np.kaiser(length, beta)
+  win_str += 'Kaiser Window - Beta {}'.format(str(beta))
   return window, win_str

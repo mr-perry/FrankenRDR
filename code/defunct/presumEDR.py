@@ -25,7 +25,7 @@ def writeLog(log, string):
     log.write(string + '\n')
 
 
-def main(runName, auxname, lblname, edrname, presum_proc=4, win_type=4, fil_type='Match', compression=False, verb=True):
+def main(runName, auxname, lblname, edrname, presum_proc=4, win_type=4, fil_type='Match', verb=True):
   """
     This python script simply reads in EDR data and returns the chirp
     compressed science record, which should be coplex voltage
@@ -59,8 +59,11 @@ def main(runName, auxname, lblname, edrname, presum_proc=4, win_type=4, fil_type
     writeLog(_log, '----- Presum Information -----')
     writeLog(_log, 'InstrPresum:\t{}'.format(InstrPresum))
     writeLog(_log, 'Processing Presum:\t{}'.format(presum_proc))
-    writeLog(_log, 'Presum Factor:\t{}'.format(presum_fac))
-    writeLog(_log, '----- End Presum Information -----')
+    if presum_fac == 1:
+      writeLog(_log, 'No additional presumming performed')
+    else:
+      writeLog(_log, 'Presum Factor:\t{}'.format(presum_fac))
+      writeLog(_log, '----- End Presum Information -----')
     writeLog(_log, 'Instrument Mode:\t{}'.format(instrMode))
     writeLog(_log, 'Bits Per Sample:\t{}'.format(BitsPerSample))
     writeLog(_log, 'Record Length:\t{}'.format(recLen))
@@ -94,7 +97,7 @@ def main(runName, auxname, lblname, edrname, presum_proc=4, win_type=4, fil_type
       #
       # Decompress science data
       #
-      sci = decompressSciData(sci, compression, InstrPresum, BitsPerSample)
+      sci = decompressSciData(sci, lblDic['COMPRESSION'], InstrPresum, BitsPerSample, ancil['SDI_BIT_FIELD'])
       #
       # Determine calibrated chirp
       #
@@ -104,11 +107,11 @@ def main(runName, auxname, lblname, edrname, presum_proc=4, win_type=4, fil_type
       #
       presum_rec[:,_k] = rangeCompression(sci, calChirp, window, fil_type="Match", diag=False)
     EDRData[:,int(_i/presum_fac)] = np.sum(presum_rec, axis=1)
-    #pow_out = np.power(np.abs(EDRData[:,int(_i/presum_fac)]), 2) / np.power(np.abs(np.amax(EDRData[:,int(_i/presum_fac)])), 2) 
-    #plt.plot(pow_out)
+#    pow_out = np.power(np.abs(EDRData[:,int(_i/presum_fac)]), 2) / np.power(np.abs(np.amax(EDRData[:,int(_i/presum_fac)])), 2) 
+#    plt.plot(pow_out)
 #    plt.xlim([250,290])
-    #plt.show()
-    #sys.exit()
+#    plt.show()
+#    sys.exit()
   if verb:
     writeLog(_log, 'Decompession finished at:\t{}'.format(datetime.now()))
     writeLog(_log, 'Converting to presum:\t{}'.format(presum_proc))
@@ -118,14 +121,14 @@ def main(runName, auxname, lblname, edrname, presum_proc=4, win_type=4, fil_type
   return
   
 if __name__ == '__main__':
-  runName = '0879801_KB6_16'
+  runName = 'TEST'
   verb = True
   win_type = 6						# 0 (uniform), 2 (bartlett), 3 (Hann), 4 (Hamming), 5 (Blackman), 6 (Kaiser)
-  beta = 5 
-  td = 6						# Which test set
+  beta = 0 
+  td = 7						# Which test set
   fil_type = 'Match'					# Chirp compression method
   compression = False;					# Static compression
-  presum_proc = 16					# Bring processing to presum-16
+  presum_proc = 4					# Bring processing to presum-16
   #
   # BEGIN INPUT DATA
   #
@@ -157,4 +160,8 @@ if __name__ == '__main__':
     auxname = '../data/e_0879801_001_ss19_700_a_a.dat'
     lblname = '../data/e_0879801_001_ss19_700_a.lbl'
     edrname = '../data/e_0879801_001_ss19_700_a_s.dat'
+  elif td == 7: #Short NPLD many reflections
+    auxname = '../data/e_0577001_001_ss19_700_a_a.dat'
+    lblname = '../data/e_0577001_001_ss19_700_a.lbl'
+    edrname = '../data/e_0577001_001_ss19_700_a_s.dat'
   main(runName, auxname, lblname, edrname, presum_proc=presum_proc, win_type=win_type, fil_type=fil_type, compression=compression, verb=verb) 
