@@ -12,8 +12,7 @@ def rangeCompression(sci, calChirp, window, fil_type='Match', diag=False):
   Fc = (80./3. - 20.)                                    # MHz
   dt = (3./80.)                                           # Microseconds
   t = np.arange(0*dt, 4096*dt, dt)
-  pha_shift = np.exp(2*np.pi*1j*Fc*t)
-#  pha_shift = 1
+  pha_shift = np.exp(2*np.pi*complex(0,1)*Fc*t)
   #
   # Check length of the science data
   #
@@ -32,24 +31,17 @@ def rangeCompression(sci, calChirp, window, fil_type='Match', diag=False):
   ecSpec = np.fft.fftshift(ecSpec)
   ecFreq = np.fft.fftshift(ecFreq)
   #
-  # Apply the window (testing)
-  #
-#  ecSpec_win = window * ecSpec
-  ecSpec_win = ecSpec
-  #
   # Take central 2048 samples
   #
   st = 1024
   en = 3072
-  ecSpec_cut = ecSpec_win[st:en]
+  ecSpec_cut = ecSpec[st:en]
   ecFreq_cut = ecFreq[st:en]
   #
   # Perform Chirp compression
   #
   if fil_type == 'Match':
-#    temp = window * np.conj(calChirp) * ecSpec_cut
-    dechirp = (ecSpec_cut) * CC		# For some reason this works without the conjugate 
-#    dechirp = (ecSpec_cut) * np.conj(calChirp) 
+    dechirp = (ecSpec_cut * window) * calChirp		# For some reason this works without the conjugate 
   elif fil_type == "Inverse":
     sys.exit()
   #
@@ -88,10 +80,10 @@ def rangeCompression(sci, calChirp, window, fil_type='Match', diag=False):
     #
     chirpFreq = np.linspace(-(13+1/3), (13+1/3),num=4096 )
     plt.subplot(2,1,1)
-    plt.plot(chirpFreq[1024:3072], np.abs(np.real(CC)))
+    plt.plot(chirpFreq[1024:3072], np.abs(np.real(calChirp)))
     plt.title('Chirp Spectrum')
     plt.subplot(2,1,2)
-    plt.plot(chirpFreq[1024:3072], np.unwrap(np.angle(CC)))
+    plt.plot(chirpFreq[1024:3072], np.unwrap(np.angle(calChirp)))
     plt.title('Chirp Phase Spectrum')
     plt.show()
     plt.clf()

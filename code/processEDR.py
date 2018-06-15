@@ -101,7 +101,6 @@ def main(runName, auxname, lblname, edrname, presum_proc=None, beta=5, fil_type=
       # Parse Ancilliary Datq
       #
       ancil = parseAncilliary(ancil)
-      print(ancil['OST_LINE']['MANUAL_GAIN_CONTROL'])
       #
       # Decompress science data
       #
@@ -113,7 +112,7 @@ def main(runName, auxname, lblname, edrname, presum_proc=None, beta=5, fil_type=
       #
       # Perform chirp compression
       #
-      presum_rec[:,_k] = rangeCompression(sci, calChirp, window, fil_type="Match", diag=True)
+      presum_rec[:,_k] = rangeCompression(sci, calChirp, window, fil_type="Match", diag=False)
       #
       # Perform on-ground calibration
       #  This step will have to wait. Apparently the angles given in the Auxilliary file are
@@ -127,12 +126,12 @@ def main(runName, auxname, lblname, edrname, presum_proc=None, beta=5, fil_type=
         sft = mx0 - mx
         presum_rec[:,_k] = np. roll(presum_rec[:, _k], sft)
     EDRData[:,int(_i/presum_fac)] = np.sum(presum_rec, axis=1)
-  '''
     #temp = np.power(np.abs(EDRData[:,int(_i/presum_fac)]),2)/ np.max(np.power(np.abs(EDRData[:,int(_i/presum_fac)]),2))
+  '''
     temp = np.abs(np.real(EDRData[:,int(_i/presum_fac)]))
     temp = temp / np.max(temp)
     idx = np.where(temp == np.max(temp))[0][0]
-    plt.plot(10 * np.log10(temp))
+    plt.plot(temp)
     plt.xlim(idx, idx+100)
     plt.show()
     if _i == 5*presum_fac:
@@ -142,16 +141,16 @@ def main(runName, auxname, lblname, edrname, presum_proc=None, beta=5, fil_type=
     writeLog(_log, 'Decompession finished at:\t{}'.format(datetime.now()))
   fname = '../runs/' + str(runName) + '.npy'
   np.save(fname, EDRData)
-  plotEDR(EDRData, fname=runName, rel=True)
+  #plotEDR(EDRData, fname=runName, rel=True)
   plotEDR_new(EDRData, fname=runName)
   return
   
 if __name__ == '__main__':
-  runName = 'td7_beta5_ps4'
+  runName = 'td7_beta0_ps4'
   verb = True
   win_type = 14                                         # 0 (uniform), 2 (bartlett), 3 (Hann), 4 (Hamming), 5 (Blackman), 6 (Kaiser)
   beta = 0
-  td = 6                                               # Which test set
+  td = 7                                               # Which test set
   fil_type = 'Match'                                    # Chirp compression method
   presum_proc = 4
   #
