@@ -74,15 +74,15 @@ def main(runName, auxname, lblname, edrname, presum_proc=None, beta=5, fil_type=
   #
   # Construct window
   #
-  window, win_str = makeWindow(beta, length=4096)
+  window, win_str = makeWindow(beta, length=2048)
   writeLog(_log, win_str)
   ######################################################################
   #
   # Begin Processing
   #
   ######################################################################
-  EDRData = np.zeros([4096, int(np.ceil(nrec/presum_fac))], complex)
-  presum_rec = np.zeros([4096, presum_fac], complex)
+  EDRData = np.zeros([2048, int(np.ceil(nrec/presum_fac))], complex)
+  presum_rec = np.zeros([2048, presum_fac], complex)
   writeLog(_log, 'Opening EDR File:\t{}'.format(edrname))
   _file1 = open(edrname, 'rb')
   if verb:
@@ -101,6 +101,7 @@ def main(runName, auxname, lblname, edrname, presum_proc=None, beta=5, fil_type=
       # Parse Ancilliary Datq
       #
       ancil = parseAncilliary(ancil)
+      print(ancil['OST_LINE']['MANUAL_GAIN_CONTROL'])
       #
       # Decompress science data
       #
@@ -112,7 +113,7 @@ def main(runName, auxname, lblname, edrname, presum_proc=None, beta=5, fil_type=
       #
       # Perform chirp compression
       #
-      presum_rec[:,_k] = rangeCompression(sci, calChirp, window, fil_type="Match", diag=False)
+      presum_rec[:,_k] = rangeCompression(sci, calChirp, window, fil_type="Match", diag=True)
       #
       # Perform on-ground calibration
       #  This step will have to wait. Apparently the angles given in the Auxilliary file are
@@ -126,28 +127,31 @@ def main(runName, auxname, lblname, edrname, presum_proc=None, beta=5, fil_type=
         sft = mx0 - mx
         presum_rec[:,_k] = np. roll(presum_rec[:, _k], sft)
     EDRData[:,int(_i/presum_fac)] = np.sum(presum_rec, axis=1)
+  '''
     #temp = np.power(np.abs(EDRData[:,int(_i/presum_fac)]),2)/ np.max(np.power(np.abs(EDRData[:,int(_i/presum_fac)]),2))
-    temp = np.power(np.abs(EDRData[:,int(_i/presum_fac)]),2)
-    temp = temp / np.max(np.power(np.abs(EDRData[:,int(_i/presum_fac)]),2))
+    temp = np.abs(np.real(EDRData[:,int(_i/presum_fac)]))
+    temp = temp / np.max(temp)
     idx = np.where(temp == np.max(temp))[0][0]
     plt.plot(10 * np.log10(temp))
-    plt.xlim(idx, idx+250)
+    plt.xlim(idx, idx+100)
     plt.show()
     if _i == 5*presum_fac:
       sys.exit()
+  '''
   if verb:
     writeLog(_log, 'Decompession finished at:\t{}'.format(datetime.now()))
   fname = '../runs/' + str(runName) + '.npy'
   np.save(fname, EDRData)
+  plotEDR(EDRData, fname=runName, rel=True)
   plotEDR_new(EDRData, fname=runName)
   return
   
 if __name__ == '__main__':
-  runName = 'td7_beta0_ps16'
+  runName = 'td7_beta5_ps4'
   verb = True
   win_type = 14                                         # 0 (uniform), 2 (bartlett), 3 (Hann), 4 (Hamming), 5 (Blackman), 6 (Kaiser)
   beta = 0
-  td = 7                                                # Which test set
+  td = 6                                               # Which test set
   fil_type = 'Match'                                    # Chirp compression method
   presum_proc = 4
   #

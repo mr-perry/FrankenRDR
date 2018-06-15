@@ -63,6 +63,7 @@ def plotEDR_new(data, fname='plotEDR_new'):
   plt.imshow(pic, cmap='gray')
   plt.imsave(bmpName, pic, cmap='gray') 
   plt.show()
+  return
 
 def main():
 #  fname = '../runs/trueCentr.npy'

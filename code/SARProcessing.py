@@ -13,6 +13,7 @@ def rangeCompression(sci, calChirp, window, fil_type='Match', diag=False):
   dt = (3./80.)                                           # Microseconds
   t = np.arange(0*dt, 4096*dt, dt)
   pha_shift = np.exp(2*np.pi*1j*Fc*t)
+#  pha_shift = 1
   #
   # Check length of the science data
   #
@@ -25,16 +26,21 @@ def rangeCompression(sci, calChirp, window, fil_type='Match', diag=False):
   #
   ecSpec = np.fft.fft(echoes_shift) / len(echoes_shift)
   ecFreq = np.fft.fftfreq(len(echoes_shift), d=dt)
+  #
+  # Put the Spectra into natural order
+  #
   ecSpec = np.fft.fftshift(ecSpec)
   ecFreq = np.fft.fftshift(ecFreq)
-  ecSpec_win = window * ecSpec
+  #
+  # Apply the window (testing)
+  #
+#  ecSpec_win = window * ecSpec
+  ecSpec_win = ecSpec
   #
   # Take central 2048 samples
   #
   st = 1024
   en = 3072
-  if diag:
-    print(ecFreq[st], ecFreq[en])
   ecSpec_cut = ecSpec_win[st:en]
   ecFreq_cut = ecFreq[st:en]
   #
@@ -42,65 +48,63 @@ def rangeCompression(sci, calChirp, window, fil_type='Match', diag=False):
   #
   if fil_type == 'Match':
 #    temp = window * np.conj(calChirp) * ecSpec_cut
-    dechirp = (ecSpec_cut) * calChirp 
+    dechirp = (ecSpec_cut) * CC		# For some reason this works without the conjugate 
 #    dechirp = (ecSpec_cut) * np.conj(calChirp) 
   elif fil_type == "Inverse":
     sys.exit()
   #
-  # Pad spectrum with zeros
-  #
-  dechirp_pad = np.zeros(4096, complex)
-  dechirp_pad[1024:3072] = dechirp
-  #dechirp_pad = dechirp
-  #
   # Shift the data back to standard order
   #
-  shift_dechirp_pad = np.fft.ifftshift(dechirp_pad)
+  shift_dechirp = np.fft.ifftshift(dechirp)
   #
   # Inverse Fourier transform and fix scaling
   #
-  decomp = np.fft.ifft(shift_dechirp_pad) * len(shift_dechirp_pad) 
+  decomp = np.fft.ifft(shift_dechirp) * len(shift_dechirp) 
   if diag:
     #
     # Plot original time signal
     #
-    plt.subplot(5,1,1)
+    plt.subplot(3,1,1)
     plt.plot(t, np.abs(np.real(echoes)))
     plt.title("Raw Signal")
     plt.xlabel('Time (s)')
-    plt.ylabel('"Power"')
+    plt.ylabel('Amplitude')
     #
     # Spectra
     # 
-    plt.subplot(5,2,3)
+    plt.subplot(3,1,2)
     plt.plot(ecFreq, np.abs(np.real(ecSpec)))
 #    plt.xlim(-(6+2/3),(6+2/3))
-    plt.plot(ecFreq, window)
+#    plt.plot(ecFreq, window)
     plt.title("Windowed Magnitude Spectrum")
-    plt.subplot(5,2,4)
-    plt.plot(ecFreq, np.angle(ecSpec))
+    plt.subplot(3,1,3)
+    plt.plot(ecFreq, np.unwrap(np.angle(ecSpec)))
     plt.xlim(-(6+2/3),(6+2/3))
     plt.title('Angle Spectrum')
+    plt.show()
+    plt.clf()
     #
     # Chirp Spectra
     #
-    chirpFreq = np.arange(0*0.00651042*2-(13+1/3), 2048*0.00651042*2-(13+1/3), 0.00651042*2)
-    plt.subplot(5,2,5)
-    plt.plot(chirpFreq, np.abs(np.real(calChirp)))
+    chirpFreq = np.linspace(-(13+1/3), (13+1/3),num=4096 )
+    plt.subplot(2,1,1)
+    plt.plot(chirpFreq[1024:3072], np.abs(np.real(CC)))
     plt.title('Chirp Spectrum')
-    plt.subplot(5,2,6)
-    plt.plot(chirpFreq, np.angle(calChirp))
+    plt.subplot(2,1,2)
+    plt.plot(chirpFreq[1024:3072], np.unwrap(np.angle(CC)))
     plt.title('Chirp Phase Spectrum')
+    plt.show()
+    plt.clf()
     #
     # Range Compression
     #
-    plt.subplot(5,2,7)
+    plt.subplot(3,1,1)
     plt.plot(ecFreq_cut, np.abs(np.real((dechirp))))
     plt.title('Dechirp Power Spectrum')
-    plt.subplot(5,2,8)
-    plt.plot(ecFreq_cut, np.angle(dechirp)) 
+    plt.subplot(3,1,2)
+    plt.plot(ecFreq_cut, np.unwrap(np.angle(dechirp))) 
     plt.title('Dechirp Phase Spectrum')
-    plt.subplot(5,1,5)
+    plt.subplot(3,1,3)
     plt.plot(np.abs(np.real(decomp)))
     plt.title('Range Compressed Amplitude')
     plt.tight_layout()
