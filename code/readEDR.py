@@ -21,6 +21,7 @@ def readEDRrecord(_file, record, recLen, bps):
   _file.seek(0)
   #
   # Now fast forward to the appropriate location
+  #
   _file.seek(record*recLen)
   #
   # Step 1: Read in binary data
@@ -59,18 +60,18 @@ def readEDRrecord(_file, record, recLen, bps):
   return decoded_data, ancil
 
 
-def decompressSciData(data, compression, presum, bps):
+def decompressSciData(data, compression, presum, bps, SDI):
   """
     This function decompresses the data based off page 8 of the
     SHALLOW RADAR EXPERIMENT DATA RECORD SOFTWARE INTERFACE SPECIFICATION.
-    If the compression type is 'Static' (i.e. False):
+    If the compression type is 'Static'
        U = C*2**S / N
          C is the Compressed Data
          S = L - R + 8
             L is base 2 log of N rounded UP to the nearest integer
             R is the bit resolution of the compressed values
          N is the number of pre-summed echoes
-    If the compression type is 'dynamic' (i.e. True):
+    If the compression type is 'dynamic'
       NOT WORKING YET
       U = C*2**S/N
         C is the compressed data
@@ -83,13 +84,46 @@ def decompressSciData(data, compression, presum, bps):
   # Step 5: Decompress the data
   # Note: Only Static decompression works at this time
   #
-  if compression == False: # Static scaling
-    L = np.ceil(np.log2(int(presum)))
-    R = bps
-    S = L - R + 8
-    N = presum
-    decompressed_data = data * (np.power(2, S)/N)
+  if compression == 'STATIC' or compression == 'DYNAMIC':
+    #
+    # Handle fixed scaling
+    #
+    if compression == 'STATIC': # Static scaling
+      L = np.ceil(np.log2(int(presum)))
+      R = bps
+      S = L - R + 8
+      N = presum
+      decomp = np.power(2, S) / N
+      decompressed_data = data * decomp
+    elif compression == True:#dynamic scaling
+      N = presum
+      if SDI <= 5:
+        S = SDI
+      elif 5 < SDI <= 16:
+        S = SDI - 6
+      elif SDI > 16:
+        S = SDI - 16
+      decompressed_data = data * (np.power(2, S) / N) 
     return decompressed_data
-  elif compression == True:#dynamic scaling
-    print('This is not yet available.')
-    sys.exit()
+  else:
+    print('Decompression Error: Compression Type {} not understood'.format(compression))
+    return
+
+
+#def calibrateData(data, 
+  #
+  # The following factors affect the performance of SHARAD
+  #     1) Transmitter and Receiver Temperatures
+  #     2) Spacecraft attitude (i.e. Spacecraft roll-angle)
+  #		Fabrizio says to add or subtract 180 ... and then determine which works.:q
+
+  #     3) Spacecraft configuration (i.e. orientation of large moving parts)
+  #     4) Propagation of the signal through Mars' ionosphere
+  #
+  
+  
+
+
+def detSCConf(SAMX_IG, SAPX_IG, OGA):
+  print(SAMX_IG, SAPX_IG, OGA)
+  return 0

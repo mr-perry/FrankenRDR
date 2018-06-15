@@ -6,7 +6,7 @@ import os, sys
 import matplotlib.pyplot as plt
 
 
-def detChirpFiles(TxTemp, RxTemp, conj=False):
+def detChirpFiles(TxTemp, RxTemp):
   """
   This function determines the appropriate calibrated chirp file to use
   for range compression and returns the decoded calibrated chirp.
@@ -46,8 +46,6 @@ def detChirpFiles(TxTemp, RxTemp, conj=False):
   if os.path.isfile(calChirpFile):
     calChirp = np.fromfile(calChirpFile, dtype='<f')
     calChirp = calChirp[:2048] + 1j*calChirp[2048:]
-    if conj:
-      calChirp = np.conj(calChirp)
     return calChirp
   else:
     print('Calibrated chirp file not found...exiting.')
