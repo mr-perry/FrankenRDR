@@ -41,7 +41,8 @@ def rangeCompression(sci, calChirp, window, fil_type='Match', diag=False):
   # Perform Chirp compression
   #
   if fil_type == 'Match':
-    dechirp = (ecSpec_cut * window) * calChirp		# For some reason this works without the conjugate 
+    dechirp = (ecSpec_cut * window) * (calChirp)
+    #dechirp = (ecSpec_cut * window) * np.conj(calChirp)
   elif fil_type == "Inverse":
     sys.exit()
   #

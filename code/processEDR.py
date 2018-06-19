@@ -108,11 +108,11 @@ def main(runName, auxname, lblname, edrname, presum_proc=None, beta=5, fil_type=
       #
       # Determine calibrated chirp
       #
-      calChirp = detChirpFiles(AuxDF['TX_TEMP'][_i], AuxDF['RX_TEMP'][_i])
+      calChirp = detChirpFiles(AuxDF['TX_TEMP'][_i], AuxDF['RX_TEMP'][_i], ideal=True)
       #
       # Perform chirp compression
       #
-      presum_rec[:,_k] = rangeCompression(sci, calChirp, window, fil_type="Match", diag=False)
+      presum_rec[:,_k] = rangeCompression(sci, calChirp, window, fil_type="Match", diag=True)
       #
       # Perform on-ground calibration
       #  This step will have to wait. Apparently the angles given in the Auxilliary file are
@@ -150,7 +150,7 @@ if __name__ == '__main__':
   verb = True
   win_type = 14                                         # 0 (uniform), 2 (bartlett), 3 (Hann), 4 (Hamming), 5 (Blackman), 6 (Kaiser)
   beta = 0
-  td = 7                                               # Which test set
+  td = 4                                               # Which test set
   fil_type = 'Match'                                    # Chirp compression method
   presum_proc = 4
   #
