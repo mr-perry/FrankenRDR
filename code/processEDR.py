@@ -15,7 +15,7 @@ from readEDR import readEDRrecord, decompressSciData, detSCConf
 from ProcessingTools import makeWindow
 from SARProcessing import rangeCompression
 from readChirp import detChirpFiles
-from plottingFunctions import plotEDR_new, bytescl, rdr2san
+from plottingFunctions import plotEDR, bytescl, rdr2san
 import matplotlib.pyplot as plt
 import glob, os, sys
 
@@ -119,12 +119,12 @@ def main(runName, auxname, lblname, edrname, presum_proc=None, beta=5, fil_type=
       #  incorrect for some dates and change after a certain date. Fabrizio is checking on this
       #
 #      presum_rec[:, _k] = calibrateData(presum_rec[:, _k])
-      if _k == 0:
-        mx0 = np.where(presum_rec[:,_k] == np.max(presum_rec[:,_k]))[0]
-      else:
-        mx = np.where(presum_rec[:,_k] == np.max(presum_rec[:,_k]))[0]
-        sft = mx0 - mx
-        presum_rec[:,_k] = np. roll(presum_rec[:, _k], sft)
+#      if _k == 0:
+#        mx0 = np.where(presum_rec[:,_k] == np.max(presum_rec[:,_k]))[0]
+#      else:
+#        mx = np.where(presum_rec[:,_k] == np.max(presum_rec[:,_k]))[0]
+#        sft = mx0 - mx
+#        presum_rec[:,_k] = np.roll(presum_rec[:, _k], sft)
     EDRData[:,int(_i/presum_fac)] = np.sum(presum_rec, axis=1)
     #temp = np.power(np.abs(EDRData[:,int(_i/presum_fac)]),2)/ np.max(np.power(np.abs(EDRData[:,int(_i/presum_fac)]),2))
   '''
@@ -141,18 +141,19 @@ def main(runName, auxname, lblname, edrname, presum_proc=None, beta=5, fil_type=
     writeLog(_log, 'Decompession finished at:\t{}'.format(datetime.now()))
   fname = '../runs/' + str(runName) + '.npy'
   np.save(fname, EDRData)
-  #plotEDR(EDRData, fname=runName, rel=True)
-  plotEDR_new(EDRData, fname=runName)
+  plotEDR(EDRData, fname=runName, ptype='Amp', thres=0.3, rel=True)
+  plotEDR(EDRData, fname=runName, ptype='Pow', thres=0.3, rel=True)
+  plotEDR(EDRData, fname=runName, ptype='dB', thres=-20, rel=True)
   return
   
 if __name__ == '__main__':
-  runName = 'td7_beta0_ps4'
+  runName = 'td7_beta6_ps8'
   verb = True
   win_type = 14                                         # 0 (uniform), 2 (bartlett), 3 (Hann), 4 (Hamming), 5 (Blackman), 6 (Kaiser)
-  beta = 0
-  td = 7                                               # Which test set
+  beta = 6
+  td = 4                                               # Which test set
   fil_type = 'Match'                                    # Chirp compression method
-  presum_proc = 4
+  presum_proc = 8
   #
   # BEGIN INPUT DATA
   #
