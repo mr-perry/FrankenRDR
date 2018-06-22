@@ -25,7 +25,7 @@ def writeLog(log, string):
     log.write(string + '\n')
 
 
-def main(runName, auxname, lblname, edrname, presum_proc=None, beta=5, fil_type='Match', verb=True):
+def main(runName, auxname, lblname, edrname, ideal=False, presum_proc=None, beta=5, fil_type='Match', verb=True):
   """
     This python script simply reads in EDR data and returns the chirp
     compressed science record, which should be coplex voltage
@@ -74,15 +74,23 @@ def main(runName, auxname, lblname, edrname, presum_proc=None, beta=5, fil_type=
   #
   # Construct window
   #
-  window, win_str = makeWindow(beta, length=2048)
+  if ideal:
+    window, win_str = makeWindow(beta, length=3600)
+  else:
+    window, win_str = makeWindow(beta, length=2048)
   writeLog(_log, win_str)
   ######################################################################
   #
   # Begin Processing
   #
   ######################################################################
-  EDRData = np.zeros([2048, int(np.ceil(nrec/presum_fac))], complex)
-  presum_rec = np.zeros([2048, presum_fac], complex)
+  if ideal:
+    print('Using ideal chirp from US UPB')
+    EDRData = np.zeros([3600, int(np.ceil(nrec/presum_fac))], complex)
+    presum_rec = np.zeros([3600, presum_fac], complex)
+  else:
+    EDRData = np.zeros([2048, int(np.ceil(nrec/presum_fac))], complex)
+    presum_rec = np.zeros([2048, presum_fac], complex)
   writeLog(_log, 'Opening EDR File:\t{}'.format(edrname))
   _file1 = open(edrname, 'rb')
   if verb:
@@ -108,35 +116,18 @@ def main(runName, auxname, lblname, edrname, presum_proc=None, beta=5, fil_type=
       #
       # Determine calibrated chirp
       #
-      calChirp = detChirpFiles(AuxDF['TX_TEMP'][_i], AuxDF['RX_TEMP'][_i])
+      calChirp = detChirpFiles(AuxDF['TX_TEMP'][_i], AuxDF['RX_TEMP'][_i], ideal=ideal)
       #
       # Perform chirp compression
       #
-      presum_rec[:,_k] = rangeCompression(sci, calChirp, window, fil_type="Match", diag=False)
+      presum_rec[:,_k] = rangeCompression(sci, calChirp, window, ideal=ideal, fil_type="Match", diag=False)
       #
       # Perform on-ground calibration
       #  This step will have to wait. Apparently the angles given in the Auxilliary file are
       #  incorrect for some dates and change after a certain date. Fabrizio is checking on this
       #
 #      presum_rec[:, _k] = calibrateData(presum_rec[:, _k])
-#      if _k == 0:
-#        mx0 = np.where(presum_rec[:,_k] == np.max(presum_rec[:,_k]))[0]
-#      else:
-#        mx = np.where(presum_rec[:,_k] == np.max(presum_rec[:,_k]))[0]
-#        sft = mx0 - mx
-#        presum_rec[:,_k] = np.roll(presum_rec[:, _k], sft)
     EDRData[:,int(_i/presum_fac)] = np.sum(presum_rec, axis=1)
-    #temp = np.power(np.abs(EDRData[:,int(_i/presum_fac)]),2)/ np.max(np.power(np.abs(EDRData[:,int(_i/presum_fac)]),2))
-  '''
-    temp = np.abs(np.real(EDRData[:,int(_i/presum_fac)]))
-    temp = temp / np.max(temp)
-    idx = np.where(temp == np.max(temp))[0][0]
-    plt.plot(temp)
-    plt.xlim(idx, idx+100)
-    plt.show()
-    if _i == 5*presum_fac:
-      sys.exit()
-  '''
   if verb:
     writeLog(_log, 'Decompession finished at:\t{}'.format(datetime.now()))
   fname = '../runs/' + str(runName) + '.npy'
@@ -147,8 +138,9 @@ def main(runName, auxname, lblname, edrname, presum_proc=None, beta=5, fil_type=
   return
   
 if __name__ == '__main__':
-  runName = 'td7_beta6_ps8'
+  runName = 'td7_beta0_ps8_ideal'
   verb = True
+  ideal = True
   win_type = 14                                         # 0 (uniform), 2 (bartlett), 3 (Hann), 4 (Hamming), 5 (Blackman), 6 (Kaiser)
   beta = 6
   td = 4                                               # Which test set
@@ -206,4 +198,4 @@ if __name__ == '__main__':
     lblname = '../data/e_5050702_001_ss19_700_a.lbl'
     edrname = '../data/e_5050702_001_ss19_700_a_s.dat'
      
-  main(runName, auxname, lblname, edrname, presum_proc=presum_proc, beta=beta, fil_type=fil_type, verb=verb) 
+  main(runName, auxname, lblname, edrname, ideal=ideal, presum_proc=presum_proc, beta=beta, fil_type=fil_type, verb=verb) 
