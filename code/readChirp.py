@@ -65,10 +65,10 @@ def detChirpFiles(TxTemp, RxTemp, ideal=False):
     ctime = np.arange(0,nsamp) * delay_res
     arg = 2.0*np.pi*ctime*(fhi+fslope*ctime/2.0)
     ideal_chirp = np.zeros(3600, complex)
-    ideal_chirp[:len(arg)] = np.sin(arg)
+    ideal_chirp[:int(nsamp)] = np.sin(arg)
     ideal_chirp_FFT = np.fft.fft(ideal_chirp)
     #
-    # Load nal_filter.dat
+    # Load cal_filter.dat
     #
     cal_filter = np.fromfile('../calib/cal_filter.dat', '<f')
     cal_filter = cal_filter[:1800] + 1j*cal_filter[1800:]
@@ -76,14 +76,4 @@ def detChirpFiles(TxTemp, RxTemp, ideal=False):
     calChirp = np.zeros(3600, complex)
     calChirp[1800:] = cal_filter
     calChirp = calChirp*ideal_chirp_FFT
-    calChirp = calChirp[1552:]
-    #
-    # Now center spectra in 2048 length window
-    #
-    id1 = np.where(calChirp == 0)
-    ls = len(np.where(id1[0] < 1024)[0]) 
-    rs = len(np.where(id1[0] > 1024)[0]) 
-    tot = ls + rs
-    roll = int(tot/2 - ls)
-    calChirp = np.roll(calChirp, roll)
     return calChirp
