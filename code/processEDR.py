@@ -15,7 +15,7 @@ from readEDR import readEDRrecord, decompressSciData, detSCConf
 from ProcessingTools import makeWindow
 from SARProcessing import rangeCompression
 from readChirp import detChirpFiles
-from plottingFunctions import plotEDR_new, bytescl, rdr2san
+from plottingFunctions import plotEDR, bytescl, rdr2san
 import matplotlib.pyplot as plt
 import glob, os, sys
 
@@ -132,8 +132,9 @@ def main(runName, auxname, lblname, edrname, ideal=False, presum_proc=None, beta
     writeLog(_log, 'Decompession finished at:\t{}'.format(datetime.now()))
   fname = '../runs/' + str(runName) + '.npy'
   np.save(fname, EDRData)
-  #plotEDR(EDRData, fname=runName, rel=True)
-  plotEDR_new(EDRData, fname=runName)
+  plotEDR(EDRData, fname=runName, ptype='Amp', thres=0.3, rel=True)
+  plotEDR(EDRData, fname=runName, ptype='Pow', thres=0.3, rel=True)
+  plotEDR(EDRData, fname=runName, ptype='dB', thres=-20, rel=True)
   return
   
 if __name__ == '__main__':
@@ -141,8 +142,8 @@ if __name__ == '__main__':
   verb = True
   ideal = True
   win_type = 14                                         # 0 (uniform), 2 (bartlett), 3 (Hann), 4 (Hamming), 5 (Blackman), 6 (Kaiser)
-  beta = 0
-  td = 7                                               # Which test set
+  beta = 6
+  td = 4                                               # Which test set
   fil_type = 'Match'                                    # Chirp compression method
   presum_proc = 8
   #
