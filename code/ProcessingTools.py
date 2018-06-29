@@ -52,3 +52,11 @@ def makeWindow(beta, length=2048):
   window = np.kaiser(length, beta)
   win_str += 'Kaiser Window - Beta {}'.format(str(beta))
   return window, win_str
+
+
+def calcSNR(data):
+  Amp = np.abs(np.real(data))
+  signal = np.mean(np.amax(Amp, axis=0))
+  noise = np.mean(Amp)
+  SNR = 10*np.log10(np.power(signal/noise,2))
+  return SNR

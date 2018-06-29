@@ -2,7 +2,7 @@
 # Import necessary libraries
 #
 from datetime import datetime
-from scipy import signal
+from scipy.signal import welch
 import time
 import pandas as pd
 import numpy as np
@@ -12,10 +12,10 @@ from readLBL import parseLBLFile
 from readAux import parseAuxFile
 from readAnc import parseAncilliary
 from readEDR import readEDRrecord, decompressSciData, detSCConf
-from ProcessingTools import makeWindow
+from ProcessingTools import makeWindow, calcSNR
 from SARProcessing import rangeCompression
 from readChirp import detChirpFiles
-from plottingFunctions import plotEDR, bytescl, rdr2san
+from plottingFunctions import plotEDR, bytescl, rdr2san, makePSD, plotFirstReturn 
 import matplotlib.pyplot as plt
 import glob, os, sys
 
@@ -25,7 +25,7 @@ def writeLog(log, string):
     log.write(string + '\n')
 
 
-def main(runName, auxname, lblname, edrname, ideal=False, presum_proc=None, beta=5, fil_type='Match', verb=True):
+def main(runName, auxname, lblname, edrname, chirp='ref', presum_proc=None, beta=5, fil_type='Match', verb=True, diag=False):
   """
     This python script simply reads in EDR data and returns the chirp
     compressed science record, which should be coplex voltage
@@ -74,7 +74,7 @@ def main(runName, auxname, lblname, edrname, ideal=False, presum_proc=None, beta
   #
   # Construct window
   #
-  if ideal:
+  if chirp == 'ideal' or chirp == 'UPB':
     window, win_str = makeWindow(beta, length=3600)
   else:
     window, win_str = makeWindow(beta, length=2048)
@@ -84,13 +84,16 @@ def main(runName, auxname, lblname, edrname, ideal=False, presum_proc=None, beta
   # Begin Processing
   #
   ######################################################################
-  if ideal:
-    print('Using ideal chirp from US UPB')
+  if chirp == 'ideal' or chirp == 'UPB':
+    if chirp == 'ideal':
+      print('Using ideal chirp')
+    else:
+      print('Using cal_filter chirp from UPB')
     EDRData = np.zeros([3600, int(np.ceil(nrec/presum_fac))], complex)
     presum_rec = np.zeros([3600, presum_fac], complex)
   else:
-    EDRData = np.zeros([2048, int(np.ceil(nrec/presum_fac))], complex)
-    presum_rec = np.zeros([2048, presum_fac], complex)
+    EDRData = np.zeros([4096, int(np.ceil(nrec/presum_fac))], complex)
+    presum_rec = np.zeros([4096, presum_fac], complex)
   writeLog(_log, 'Opening EDR File:\t{}'.format(edrname))
   _file1 = open(edrname, 'rb')
   if verb:
@@ -116,11 +119,11 @@ def main(runName, auxname, lblname, edrname, ideal=False, presum_proc=None, beta
       #
       # Determine calibrated chirp
       #
-      calChirp = detChirpFiles(AuxDF['TX_TEMP'][_i], AuxDF['RX_TEMP'][_i], ideal=ideal)
+      calChirp = detChirpFiles(AuxDF['TX_TEMP'][_i], AuxDF['RX_TEMP'][_i], chirp=chirp)
       #
       # Perform chirp compression
       #
-      presum_rec[:,_k] = rangeCompression(sci, calChirp, window, ideal=ideal, fil_type="Match", diag=False)
+      presum_rec[:,_k] = rangeCompression(sci, calChirp, window, chirp=chirp, fil_type="Match", diag=diag)
       #
       # Perform on-ground calibration
       #  This step will have to wait. Apparently the angles given in the Auxilliary file are
@@ -128,24 +131,29 @@ def main(runName, auxname, lblname, edrname, ideal=False, presum_proc=None, beta
       #
 #      presum_rec[:, _k] = calibrateData(presum_rec[:, _k])
     EDRData[:,int(_i/presum_fac)] = np.sum(presum_rec, axis=1)
+  #
+  # Calculate Signal-To-Noise (This isn't very useful for determining the best method for reducing sidelobe
+  #
+  SNR = calcSNR(EDRData)
   if verb:
     writeLog(_log, 'Decompession finished at:\t{}'.format(datetime.now()))
+    writeLog(_log, 'Signal-To-Noise Ratio:\t{}'.format(SNR))
   fname = '../runs/' + str(runName) + '.npy'
   np.save(fname, EDRData)
-  plotEDR(EDRData, fname=runName, ptype='Amp', thres=0.3, rel=True)
-  plotEDR(EDRData, fname=runName, ptype='Pow', thres=0.3, rel=True)
-  plotEDR(EDRData, fname=runName, ptype='dB', thres=-20, rel=True)
+  plotEDR(EDRData, fname=runName, ptype='Amp', thres=0, rel=True)
+  plotEDR(EDRData, fname=runName, ptype='Pow', thres=0, rel=True)
+  plotEDR(EDRData, fname=runName, ptype='dB', thres=-15, rel=True)
   return
   
 if __name__ == '__main__':
-  runName = 'td7_beta0_ps8_ideal'
+  runName = 'test'
   verb = True
-  ideal = True
-  win_type = 14                                         # 0 (uniform), 2 (bartlett), 3 (Hann), 4 (Hamming), 5 (Blackman), 6 (Kaiser)
-  beta = 6
-  td = 4                                               # Which test set
+  diag = False
+  chirp = 'ref'
+  beta = 0						# Kaiser window beta value; 0 -rectangular; 5 similar to Hamming; 6 similar to Hann, 8.6 Similar to blackman
+  td = 4                                              # Which test set
   fil_type = 'Match'                                    # Chirp compression method
-  presum_proc = 8
+  presum_proc = 4
   #
   # BEGIN INPUT DATA
   #
@@ -181,21 +189,9 @@ if __name__ == '__main__':
     auxname = '../data/e_0577001_001_ss19_700_a_a.dat'
     lblname = '../data/e_0577001_001_ss19_700_a.lbl'
     edrname = '../data/e_0577001_001_ss19_700_a_s.dat'
-  elif td == 8: #Rolled Observation
-    auxname = '../data/e_4866701_001_ss19_700_a_a.dat'
-    lblname = '../data/e_4866701_001_ss19_700_a.lbl'
-    edrname = '../data/e_4866701_001_ss19_700_a_s.dat'
-  elif td == 9: #Rolled Observation
-    auxname = '../data/e_1733901_001_ss19_700_a_a.dat'
-    lblname = '../data/e_1733901_001_ss19_700_a.lbl'
-    edrname = '../data/e_1733901_001_ss19_700_a_s.dat'
-  elif td == 10: # looooooong obs.
-    auxname = '../data/e_0246001_001_ss11_700_a_a.dat'
-    lblname = '../data/e_0246001_001_ss11_700_a.lbl'
-    edrname = '../data/e_0246001_001_ss11_700_a_s.dat'
-  elif td == 11: # looooooong obs.
-    auxname = '../data/e_5050702_001_ss19_700_a_a.dat'
-    lblname = '../data/e_5050702_001_ss19_700_a.lbl'
-    edrname = '../data/e_5050702_001_ss19_700_a_s.dat'
+  elif td == 8: 
+    auxname = '../data/e_3940901_001_ss19_700_a_a.dat'
+    lblname = '../data/e_3940901_001_ss19_700_a.lbl'
+    edrname = '../data/e_3940901_001_ss19_700_a_s.dat'
      
-  main(runName, auxname, lblname, edrname, ideal=ideal, presum_proc=presum_proc, beta=beta, fil_type=fil_type, verb=verb) 
+  main(runName, auxname, lblname, edrname, chirp=chirp, presum_proc=presum_proc, beta=beta, fil_type=fil_type, verb=verb, diag=diag) 

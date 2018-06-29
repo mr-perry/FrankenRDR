@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def rangeCompression(sci, calChirp, window, ideal=False, fil_type='Match', diag=False):
+def rangeCompression(sci, calChirp, window, chirp='ref', fil_type='Match', diag=False):
   """
     This function performs the chirp compression on a single SHARAD record
     Inputs:
@@ -15,18 +15,19 @@ def rangeCompression(sci, calChirp, window, ideal=False, fil_type='Match', diag=
   # 3600 -- ideal chirp
   #
   length = len(calChirp)
-  if ideal:
+  if chirp == 'ideal' or chirp == 'UPB':
     dt = 135.00e-6 / 3600.
     sharad_ipp = 1.0 / 700.28
     Fc = 1 / dt
     plen = 85.05e-6
     nsamp = plen / dt
     t = np.arange(0,length) * dt
-    ecSpec = np.fft.fftshift(np.fft.fft(sci))
+    ecSpec = np.fft.fft(sci) / len(sci)
     ecFreq = np.fft.fftshift(np.fft.fftfreq(length, dt)) 
-    
+    ecSpec_shift = np.fft.fftshift(ecSpec)
+    ecFreq_shift = np.fft.fftshift(ecFreq) 
     dechirp = np.conj(calChirp)
-    decomp =  np.fft.ifft(window*(dechirp*(np.fft.fft(sci))))
+    decomp =  np.fft.ifft(window*(dechirp*(ecSpec))) * len(sci)
     if diag:
       #
       # Plot original time signal
@@ -40,11 +41,11 @@ def rangeCompression(sci, calChirp, window, ideal=False, fil_type='Match', diag=
       # Spectra
       # 
       plt.subplot(3,1,2)
-      plt.plot(ecFreq/1e6, np.abs(np.real(ecSpec)))
+      plt.plot(ecFreq/1e6, np.abs(np.real(ecSpec_shift)))
   #    plt.plot(ecFreq, window)
       plt.title("Windowed Magnitude Spectrum")
       plt.subplot(3,1,3)
-      plt.plot(ecFreq/1e6, np.unwrap(np.angle(ecSpec)))
+      plt.plot(ecFreq/1e6, np.unwrap(np.angle(ecSpec_shift)))
       plt.title('Angle Spectrum')
       plt.tight_layout()
       plt.show()
@@ -78,13 +79,11 @@ def rangeCompression(sci, calChirp, window, ideal=False, fil_type='Match', diag=
       plt.show()
       sys.exit()
     return decomp
-    
-    return decomp
   else:
-    Fc = (80./3. - 20.)                                    # MHz
-    dt = (3./80.)                                           # Microseconds
+    Fc = (80./3. - 20.)                                    # 6.66666 MHz
+    dt = (3./80.)                                           # 0.0375 Microseconds
     t = np.arange(0*dt, 4096*dt, dt)
-    pha_shift = np.exp(2*np.pi*complex(0,1)*Fc*t)
+    pha_shift = np.exp(2*np.pi*1j*Fc*t)
     #
     # Check length of the science data
     #
@@ -114,9 +113,11 @@ def rangeCompression(sci, calChirp, window, ideal=False, fil_type='Match', diag=
     #
     if fil_type == 'Match':
       dechirp = (ecSpec_cut * window) * (calChirp)
-      #dechirp = (ecSpec_cut * window) * np.conj(calChirp)
     elif fil_type == "Inverse":
       sys.exit()
+    temp = np.zeros(4096, complex)
+    temp[1024:3072] = dechirp
+    dechirp = np.copy(temp)
     #
     # Shift the data back to standard order
     #
@@ -138,42 +139,39 @@ def rangeCompression(sci, calChirp, window, ideal=False, fil_type='Match', diag=
       # Spectra
       # 
       plt.subplot(3,1,2)
-      plt.plot(ecFreq, np.abs(np.real(ecSpec)))
-  #    plt.xlim(-(6+2/3),(6+2/3))
-  #    plt.plot(ecFreq, window)
-      plt.title("Windowed Magnitude Spectrum")
+      plt.plot(ecFreq, np.abs(ecSpec))
+      plt.title("Modulus Amplitude Spectrum (|S|)")
       plt.subplot(3,1,3)
       plt.plot(ecFreq, np.unwrap(np.angle(ecSpec)))
-      plt.xlim(-(6+2/3),(6+2/3))
-      plt.title('Angle Spectrum')
+      plt.title('Unwrapped Phase Spectrum')
+      plt.tight_layout()
       plt.show()
       plt.clf()
       #
       # Chirp Spectra
       #
-      chirpFreq = np.linspace(-(13+1/3), (13+1/3),num=4096 )
       plt.subplot(2,1,1)
-      plt.plot(chirpFreq[1024:3072], np.abs(np.real(calChirp)))
-      plt.title('Chirp Spectrum')
+      plt.plot(np.arange(-(6+2/3), 6+2/3-0.00651, 0.00651), np.abs(calChirp))
+      plt.title('Modulus Amplitude Spectrum of Reference Chirp (|C|)')
       plt.subplot(2,1,2)
-      plt.plot(chirpFreq[1024:3072], np.unwrap(np.angle(calChirp)))
-      plt.title('Chirp Phase Spectrum')
+      plt.plot(np.arange(-(6+2/3), 6+2/3-0.00651, 0.00651), np.unwrap(np.angle(calChirp)))
+      plt.title('Unwrapped Phase Spectrum of Reference Chirp')
+      plt.tight_layout()
       plt.show()
       plt.clf()
       #
       # Range Compression
       #
       plt.subplot(3,1,1)
-      plt.plot(ecFreq_cut, np.abs(np.real((dechirp))))
-      plt.title('Dechirp Power Spectrum')
+      plt.plot(ecFreq[st:en], np.abs(dechirp))
+      plt.title('Modulus Amplitude Spectrum of Dechirped Data (| S * C |')
       plt.subplot(3,1,2)
-      plt.plot(ecFreq_cut, np.unwrap(np.angle(dechirp))) 
-      plt.title('Dechirp Phase Spectrum')
+      plt.plot(ecFreq[st:en], np.unwrap(np.angle(dechirp))) 
+      plt.title('Unwrapped Phase Spectrum of Dechirped Data')
       plt.subplot(3,1,3)
       plt.plot(np.abs(np.real(decomp)))
-      plt.title('Range Compressed Amplitude')
+      plt.title('Time Series Amplitude of Dechirped Data IFFT(| S * C |)')
       plt.tight_layout()
-      plt.savefig('diag_plot.png', dpi=1000)
       plt.show()
       sys.exit()
     return decomp
