@@ -6,13 +6,13 @@ import os, sys
 import matplotlib.pyplot as plt
 
 
-def detChirpFiles(TxTemp, RxTemp, ideal=False):
+def detChirpFiles(TxTemp, RxTemp, chirp='ref'):
   """
   This function determines the appropriate calibrated chirp file to use
   for range compression and returns the decoded calibrated chirp.
   This is solely based off the temperatures of the TxTemp and RxTemp.
   """
-  if not ideal:
+  if chirp == 'ref':
     calibRoot = '../calib/'
     calibName = 'reference_chirp'
     ext = '.dat'
@@ -46,7 +46,17 @@ def detChirpFiles(TxTemp, RxTemp, ideal=False):
                    RxCalNames[RxDiff.index(min(RxDiff))] + ext
     if os.path.isfile(calChirpFile):
       calChirp = np.fromfile(calChirpFile, dtype='<f')
-      calChirp = calChirp[:2048] + 1j*calChirp[2048:]
+      #
+      # Our determination for the best (and most mathematically sound) implementation of the calibrated chirp range compression
+      #
+      real = calChirp[2047::-1]
+      imag = calChirp[4096:2047:-1]
+      #
+      # The way the PDS actually states the file order
+     #
+#      real = calChirp[:2048]
+#      imag = calChirp[2048:]
+      calChirp = real + 1j*imag
       return calChirp
     else:
       print('Calibrated chirp file not found...exiting.')
@@ -67,13 +77,17 @@ def detChirpFiles(TxTemp, RxTemp, ideal=False):
     ideal_chirp = np.zeros(3600, complex)
     ideal_chirp[:int(nsamp)] = np.sin(arg)
     ideal_chirp_FFT = np.fft.fft(ideal_chirp)
-    #
-    # Load cal_filter.dat
-    #
-    cal_filter = np.fromfile('../calib/cal_filter.dat', '<f')
-    cal_filter = cal_filter[:1800] + 1j*cal_filter[1800:]
-    cal_filter = np.roll(cal_filter, 900)
-    calChirp = np.zeros(3600, complex)
-    calChirp[1800:] = cal_filter
-    calChirp = calChirp*ideal_chirp_FFT
-    return calChirp
+    if chirp == 'UPB':
+      #
+      # Load cal_filter.dat
+      #
+      cal_filter = np.fromfile('../calib/cal_filter.dat', '<f')
+      cal_filter = cal_filter[:1800] + 1j*cal_filter[1800:]
+      cal_filter = np.roll(cal_filter, 900)
+      calChirp = np.zeros(3600, complex)
+      calChirp[1800:] = cal_filter
+      calChirp = calChirp*ideal_chirp_FFT
+      return calChirp
+    else:
+      calChirp = ideal_chirp_FFT
+      return calChirp
