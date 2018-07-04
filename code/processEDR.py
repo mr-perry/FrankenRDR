@@ -77,7 +77,7 @@ def main(runName, auxname, lblname, edrname, chirp='ref', presum_proc=None, beta
   if chirp == 'ideal' or chirp == 'UPB':
     window, win_str = makeWindow(beta, length=3600)
   else:
-    window, win_str = makeWindow(beta, length=2048)
+    window, win_str = makeWindow(beta, length=4096)
   writeLog(_log, win_str)
   ######################################################################
   #
@@ -131,6 +131,8 @@ def main(runName, auxname, lblname, edrname, chirp='ref', presum_proc=None, beta
       #
 #      presum_rec[:, _k] = calibrateData(presum_rec[:, _k])
     EDRData[:,int(_i/presum_fac)] = np.sum(presum_rec, axis=1)
+    plotFirstReturn(EDRData[:,int(_i/presum_fac)], type='Amp', sidelobe=False, title='First Return', fname='FritzPerry3', dpi=500)
+    sys.exit()
   #
   # Calculate Signal-To-Noise (This isn't very useful for determining the best method for reducing sidelobe
   #
@@ -148,10 +150,10 @@ def main(runName, auxname, lblname, edrname, chirp='ref', presum_proc=None, beta
 if __name__ == '__main__':
   runName = 'test'
   verb = True
-  diag = False
+  diag = True
   chirp = 'ref'
   beta = 0						# Kaiser window beta value; 0 -rectangular; 5 similar to Hamming; 6 similar to Hann, 8.6 Similar to blackman
-  td = 4                                              # Which test set
+  td = 6                                              # Which test set
   fil_type = 'Match'                                    # Chirp compression method
   presum_proc = 4
   #
