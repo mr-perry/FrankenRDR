@@ -94,13 +94,8 @@ def rangeCompression(sci, calChirp, window, chirp='ref', fil_type='Match', diag=
     #
     # Compute the FFT and place on same scale as the calibrated chirp
     #
-    ecSpec = np.fft.fft(echoes_shift) / len(echoes_shift)
+    ecSpec = np.fft.fft(echoes_shift)  / len(echoes_shift)
     ecFreq = np.fft.fftfreq(len(echoes_shift), d=dt)
-    #
-    # Put the Spectra into natural order
-    #
-    ecSpec = np.fft.fftshift(ecSpec)
-    ecFreq = np.fft.fftshift(ecFreq)
     #
     # Take central 2048 samples
     #
@@ -112,20 +107,13 @@ def rangeCompression(sci, calChirp, window, chirp='ref', fil_type='Match', diag=
     # Perform Chirp compression
     #
     if fil_type == 'Match':
-      dechirp = (ecSpec_cut * window) * (calChirp)
+      dechirp = ecSpec_cut * np.conj(calChirp)
     elif fil_type == "Inverse":
       sys.exit()
-    temp = np.zeros(4096, complex)
-    temp[1024:3072] = dechirp
-    dechirp = np.copy(temp)
-    #
-    # Shift the data back to standard order
-    #
-    shift_dechirp = np.fft.ifftshift(dechirp)
     #
     # Inverse Fourier transform and fix scaling
     #
-    decomp = np.fft.ifft(shift_dechirp) * len(shift_dechirp) 
+    decomp = np.fft.ifft(dechirp) * len(dechirp)
     if diag:
       #
       # Plot original time signal
@@ -139,10 +127,14 @@ def rangeCompression(sci, calChirp, window, chirp='ref', fil_type='Match', diag=
       # Spectra
       # 
       plt.subplot(3,1,2)
-      plt.plot(ecFreq, np.abs(ecSpec))
+      plt.plot(np.abs(ecSpec))
+      plt.axvline(st, color='red')
+      plt.axvline(en, color='red')
       plt.title("Modulus Amplitude Spectrum (|S|)")
       plt.subplot(3,1,3)
-      plt.plot(ecFreq, np.unwrap(np.angle(ecSpec)))
+      plt.plot(np.unwrap(np.angle(ecSpec)))
+      plt.axvline(st, color='red')
+      plt.axvline(en, color='red')
       plt.title('Unwrapped Phase Spectrum')
       plt.tight_layout()
       plt.show()
@@ -151,10 +143,10 @@ def rangeCompression(sci, calChirp, window, chirp='ref', fil_type='Match', diag=
       # Chirp Spectra
       #
       plt.subplot(2,1,1)
-      plt.plot(np.arange(-(6+2/3), 6+2/3-0.00651, 0.00651), np.abs(calChirp))
+      plt.plot(np.abs(calChirp))
       plt.title('Modulus Amplitude Spectrum of Reference Chirp (|C|)')
       plt.subplot(2,1,2)
-      plt.plot(np.arange(-(6+2/3), 6+2/3-0.00651, 0.00651), np.unwrap(np.angle(calChirp)))
+      plt.plot(np.unwrap(np.angle(calChirp)))
       plt.title('Unwrapped Phase Spectrum of Reference Chirp')
       plt.tight_layout()
       plt.show()
@@ -163,15 +155,28 @@ def rangeCompression(sci, calChirp, window, chirp='ref', fil_type='Match', diag=
       # Range Compression
       #
       plt.subplot(3,1,1)
-      plt.plot(ecFreq[st:en], np.abs(dechirp))
+      plt.plot(np.abs(dechirp))
       plt.title('Modulus Amplitude Spectrum of Dechirped Data (| S * C |')
       plt.subplot(3,1,2)
-      plt.plot(ecFreq[st:en], np.unwrap(np.angle(dechirp))) 
+      plt.plot(np.unwrap(np.angle(dechirp))) 
       plt.title('Unwrapped Phase Spectrum of Dechirped Data')
       plt.subplot(3,1,3)
-      plt.plot(np.abs(np.real(decomp)))
+      plt.plot(np.real(decomp))
       plt.title('Time Series Amplitude of Dechirped Data IFFT(| S * C |)')
       plt.tight_layout()
       plt.show()
-      sys.exit()
+      #
+      # Other plots
+      #
+      plt.subplot(3,1,1)
+      plt.plot(np.real(decomp))
+      plt.title('Real Component of Dechirped Time Series')
+      plt.subplot(3,1,2)
+      plt.plot(np.imag(decomp))
+      plt.title('Imaginary Component of Dechirped Time Series')
+      plt.subplot(3,1,3)
+      plt.plot(np.unwrap(np.angle(decomp)))
+      plt.title('Unwrapped Phase of Dechirped Time Series')
+      plt.tight_layout()
+      plt.show()
     return decomp

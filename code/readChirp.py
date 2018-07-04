@@ -46,16 +46,8 @@ def detChirpFiles(TxTemp, RxTemp, chirp='ref'):
                    RxCalNames[RxDiff.index(min(RxDiff))] + ext
     if os.path.isfile(calChirpFile):
       calChirp = np.fromfile(calChirpFile, dtype='<f')
-      #
-      # Our determination for the best (and most mathematically sound) implementation of the calibrated chirp range compression
-      #
-      real = calChirp[2047::-1]
-      imag = calChirp[4096:2047:-1]
-      #
-      # The way the PDS actually states the file order
-     #
-#      real = calChirp[:2048]
-#      imag = calChirp[2048:]
+      real = calChirp[:2048]
+      imag = calChirp[2048:]
       calChirp = real + 1j*imag
       return calChirp
     else:

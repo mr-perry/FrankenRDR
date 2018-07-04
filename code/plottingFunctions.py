@@ -86,7 +86,7 @@ def makePSD(data, oneside=False, rel=True, dt=37.5e-9, title='PSD', fname='PSD',
 
 def plotFirstReturn(data, type='Amp', sidelobe=False, title='First Return', fname='FirstReturn', dpi=500):
   if type == 'Amp':
-    data = np.abs(np.real(data))
+    data = np.real(data)
     plt.ylabel('Amplitude')
   if type == 'Real':
     data = np.real(data)
