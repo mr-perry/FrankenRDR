@@ -92,8 +92,8 @@ def main(runName, auxname, lblname, edrname, chirp='ref', presum_proc=None, beta
     EDRData = np.zeros([3600, int(np.ceil(nrec/presum_fac))], complex)
     presum_rec = np.zeros([3600, presum_fac], complex)
   else:
-    EDRData = np.zeros([2048, int(np.ceil(nrec/presum_fac))], complex)
-    presum_rec = np.zeros([2048, presum_fac], complex)
+    EDRData = np.zeros([4096, int(np.ceil(nrec/presum_fac))], complex)
+    presum_rec = np.zeros([4096, presum_fac], complex)
   writeLog(_log, 'Opening EDR File:\t{}'.format(edrname))
   _file1 = open(edrname, 'rb')
   if verb:
@@ -131,7 +131,7 @@ def main(runName, auxname, lblname, edrname, chirp='ref', presum_proc=None, beta
       #
 #      presum_rec[:, _k] = calibrateData(presum_rec[:, _k])
     EDRData[:,int(_i/presum_fac)] = np.sum(presum_rec, axis=1)
-    plotFirstReturn(EDRData[:,int(_i/presum_fac)], type='Amp', sidelobe=False, title='First Return', fname='PDSVerbatim', dpi=500)
+    plotFirstReturn(EDRData[:,int(_i/presum_fac)], type='Amp', sidelobe=False, title='First Return', fname='FritzPerry3', dpi=500)
     sys.exit()
   #
   # Calculate Signal-To-Noise (This isn't very useful for determining the best method for reducing sidelobe
