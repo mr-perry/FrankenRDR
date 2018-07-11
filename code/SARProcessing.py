@@ -83,31 +83,35 @@ def rangeCompression(sci, calChirp, window, chirp='ref', fil_type='Match', diag=
     Fc = (80./3. - 20.)                                    # 6.66666 MHz
     dt = (3./80.)                                           # 0.0375 Microseconds
     t = np.arange(0*dt, 4096*dt, dt)
-    pha_shift = np.exp(2*np.pi*1j*Fc*t)
     #
     # Check length of the science data
     #
     if len(sci) != 4096:
       echoes = np.zeros(4096, complex)
       echoes[:len(sci)] = sci
-    echoes_shift = echoes * pha_shift
+    echoes_shift = echoes
     #
     # Compute the FFT and place on same scale as the calibrated chirp
     #
     ecSpec = np.fft.fft(echoes_shift)  / len(echoes_shift)
     ecFreq = np.fft.fftfreq(len(echoes_shift), d=dt)
     #
+    # Pad Chirp
+    # 
+    chirpWin = np.zeros(4096, complex)
+    chirpWin[1:2049] = np.conj(calChirp)
+    #
     # Take central 2048 samples
     #
-    st = 1024
-    en = 3072
+    st = 0
+    en = 4096
     ecSpec_cut = ecSpec[st:en]
     ecFreq_cut = ecFreq[st:en]
     #
     # Perform Chirp compression
     #
     if fil_type == 'Match':
-      dechirp = ecSpec_cut * np.conj(calChirp)
+      dechirp = ecSpec * chirpWin
     elif fil_type == "Inverse":
       sys.exit()
     #
@@ -143,10 +147,10 @@ def rangeCompression(sci, calChirp, window, chirp='ref', fil_type='Match', diag=
       # Chirp Spectra
       #
       plt.subplot(2,1,1)
-      plt.plot(np.abs(calChirp))
+      plt.plot(np.abs(chirpWin))
       plt.title('Modulus Amplitude Spectrum of Reference Chirp (|C|)')
       plt.subplot(2,1,2)
-      plt.plot(np.unwrap(np.angle(calChirp)))
+      plt.plot(np.unwrap(np.angle(chirpWin)))
       plt.title('Unwrapped Phase Spectrum of Reference Chirp')
       plt.tight_layout()
       plt.show()
