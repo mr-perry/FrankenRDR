@@ -96,12 +96,15 @@ def rangeCompression(sci, calChirp, window, chirp='ref', fil_type='Match', diag=
     ecSpec = np.fft.fft(echoes_shift)  / len(echoes_shift)
     ecFreq = np.fft.fftfreq(len(echoes_shift), d=dt)
     #
+    # Pad Chirp
+    # 
+    chirpWin = np.zeros(4096, complex)
+    chirpWin[1:2049] = np.conj(calChirp)
+    #
     # Take central 2048 samples
     #
-    chirpWin = np.zeros(4096, complex)
     st = 0
-    en = 2048
-    chirpWin[st:en] = np.conj(calChirp)
+    en = 4096
     ecSpec_cut = ecSpec[st:en]
     ecFreq_cut = ecFreq[st:en]
     #
