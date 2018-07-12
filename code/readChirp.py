@@ -46,40 +46,67 @@ def detChirpFiles(TxTemp, RxTemp, chirp='ref'):
                    RxCalNames[RxDiff.index(min(RxDiff))] + ext
     if os.path.isfile(calChirpFile):
       calChirp = np.fromfile(calChirpFile, dtype='<f')
-      # Method 1
-      # Add a zero to the front 
+      #
+      # Method 1 assumes the missing sample is the DC component
+      #
+      # Add a zero to the front to mimick the zero frequency term 
+      #
       real = np.zeros(4096, float)
       real[1:2049] = calChirp[:2048]
-      # Drop the last sample and reverse
+      #
+      # Drop the last sample in order to properly stich Nyquist and reverse
+      #
       real[2049:] = np.flipud(calChirp[0:2047])
+      #
       # Add a zero to the front
+      #
       imag = np.zeros(4096, float)
       imag[1:2049] = calChirp[2048:]
+      #
       # Drop the last sample and reverse and change sign
+      #
       imag[2049:] = -1 * np.flipud(calChirp[2048:-1])
-     ## plt.subplot(2,1,1)
-     # plt.plot(real[215:300])
-     # plt.subplot(2,1,2)
-     # plt.plot(imag[215:300])
-      # Method 2
-      # Add a zero to the end
-#      real = np.zeros(4096, float)
-#      real[0:2048] = calChirp[:2048]
-      # Drop the last sample and reverse
-#      real[2049:] = np.flipud(calChirp[1:2048])
+      '''
+      plt.subplot(2,1,1)
+      plt.plot(real[215:300])
+      plt.subplot(2,1,2)
+      plt.plot(imag[215:300])
+      '''
+      '''
+      #
+      # Method 2 assumes that the missing sample is Nyquist
+      #
+      # Add a zero to the end to mimic missing Nyquist
+      #
+      real = np.zeros(4096, float)
+      real[0:2048] = calChirp[:2048]
+      #
+      # Drop the last sample to properly stitch Nyquist and reverse
+      #
+      real[2049:] = np.flipud(calChirp[1:2048])
+      #
       # Add a zero to the front
-#      imag = np.zeros(4096, float)
-#      imag[0:2048] = calChirp[2048:]
+      #
+      imag = np.zeros(4096, float)
+      imag[0:2048] = calChirp[2048:]
+      #
       # Drop the last sample and reverse and change sign
-#      imag[2049:] = -1 * np.flipud(calChirp[2049:])
+      #
+      imag[2049:] = -1 * np.flipud(calChirp[2049:])
+      '''
+      #
+      # Construct the Complex Chirp
+      #
       calChirp = real + 1j*imag
-     # plt.subplot(2,1,1)
-     # plt.plot(real[215:300])
-     # plt.subplot(2,1,2)
-     # plt.plot(imag[215:300])
-     # plt.tight_layout()
-     # plt.show()
-     # sys.exit()
+      '''
+      plt.subplot(2,1,1)
+      plt.plot(real[215:300])
+      plt.subplot(2,1,2)
+      plt.plot(imag[215:300])
+      plt.tight_layout()
+      plt.show()
+      sys.exit()
+      '''
       return calChirp
     else:
       print('Calibrated chirp file not found...exiting.')

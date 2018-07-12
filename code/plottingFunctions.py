@@ -31,17 +31,11 @@ def plotEDR(data, fname='plotEDR_new', ptype='Amp', thres=0.3, rel=False):
     #
     # I use the modulus amplitude here
     #
-    Amp = data
-#    if rel == True:
-#      mx = np.amax(Amp, axis=0)
-#    else:
-#      mx = np.amax(Amp)
-    pic = Amp #/ mx
-#    pic[np.where(pic < thres)] = 0.0
+    pic = np.real(data)
   elif ptype == 'Pow':
     bmpName = '../runs/' + str(fname) + '_pow.bmp'
     pngName = '../runs/' + str(fname) + '_pow.png'
-    Pow = np.power(np.abs(data),2)
+    Pow = np.power(np.real(data),2)
     if rel == True:
       mx = np.amax(Pow, axis=0)
     else:
@@ -54,7 +48,7 @@ def plotEDR(data, fname='plotEDR_new', ptype='Amp', thres=0.3, rel=False):
       thres = -15
     bmpName = '../runs/' + str(fname) + '_dB.bmp'
     pngName = '../runs/' + str(fname) + '_dB.png'
-    Pow = np.power(np.abs(data),2)
+    Pow = np.power(np.real(data),2)
     if rel == True:
       mx = np.amax(Pow, axis=0)
     else:
