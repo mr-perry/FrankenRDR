@@ -94,7 +94,7 @@ def plotFirstReturn(data, type='Amp', sidelobe=False, title='First Return', fnam
     data = np.power(np.abs(np.real(data)),2)
   elif type == 'dB':
     data = 10 * np.log10(np.power(np.abs(np.real(data))/np.amax(np.abs(np.real(data)))),2)
-  idx = np.where(data == np.amax(data))
+  idx = np.where(np.abs(data) == np.amax(np.abs(data)))
   t0 = idx[0] * 0.0375
   t = np.arange(idx[0]-10, idx[0]+20) * 0.0375
   t = t - t0

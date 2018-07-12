@@ -80,7 +80,7 @@ def rangeCompression(sci, calChirp, window, chirp='ref', fil_type='Match', diag=
       sys.exit()
     return decomp
   else:
-    Fc = (80./3. - 20.)                                    # 6.66666 MHz
+    Fc = (20 - 80./3.)                                    # 6.66666 MHz
     dt = (3./80.)                                           # 0.0375 Microseconds
     t = np.arange(0*dt, 4096*dt, dt)
     #
@@ -99,7 +99,7 @@ def rangeCompression(sci, calChirp, window, chirp='ref', fil_type='Match', diag=
     # Pad Chirp
     # 
     chirpWin = np.zeros(4096, complex)
-    chirpWin[1:2049] = np.conj(calChirp)
+    chirpWin[0:2048] = np.conj(calChirp)
     #
     # Take central 2048 samples
     #
