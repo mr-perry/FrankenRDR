@@ -31,13 +31,13 @@ def plotEDR(data, fname='plotEDR_new', ptype='Amp', thres=0.3, rel=False):
     #
     # I use the modulus amplitude here
     #
-    Amp = np.abs(data)
-    if rel == True:
-      mx = np.amax(Amp, axis=0)
-    else:
-      mx = np.amax(Amp)
-    pic = Amp / mx
-    pic[np.where(pic < thres)] = 0.0
+    Amp = data
+#    if rel == True:
+#      mx = np.amax(Amp, axis=0)
+#    else:
+#      mx = np.amax(Amp)
+    pic = Amp #/ mx
+#    pic[np.where(pic < thres)] = 0.0
   elif ptype == 'Pow':
     bmpName = '../runs/' + str(fname) + '_pow.bmp'
     pngName = '../runs/' + str(fname) + '_pow.png'
@@ -61,7 +61,7 @@ def plotEDR(data, fname='plotEDR_new', ptype='Amp', thres=0.3, rel=False):
       mx = np.amax(Pow)
     pic = 10*np.log10(Pow/mx)
     pic[np.where(pic < thres)] = -99.0
-  plt.imshow(pic, cmap='gray', vmin=thres)
+  plt.imshow(pic, cmap='seismic')
   plt.savefig(pngName, dpi=1000)
   plt.imsave(bmpName, pic, cmap='gray') 
   return
@@ -94,7 +94,7 @@ def plotFirstReturn(data, type='Amp', sidelobe=False, title='First Return', fnam
     data = np.power(np.abs(np.real(data)),2)
   elif type == 'dB':
     data = 10 * np.log10(np.power(np.abs(np.real(data))/np.amax(np.abs(np.real(data)))),2)
-  idx = np.where(data == np.amax(data))
+  idx = np.where(np.abs(data) == np.amax(np.abs(data)))
   t0 = idx[0] * 0.0375
   t = np.arange(idx[0]-10, idx[0]+20) * 0.0375
   t = t - t0

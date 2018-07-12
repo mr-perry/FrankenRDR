@@ -131,8 +131,8 @@ def main(runName, auxname, lblname, edrname, chirp='ref', presum_proc=None, beta
       #
 #      presum_rec[:, _k] = calibrateData(presum_rec[:, _k])
     EDRData[:,int(_i/presum_fac)] = np.sum(presum_rec, axis=1)
-    plotFirstReturn(EDRData[:,int(_i/presum_fac)], type='Amp', sidelobe=False, title='First Return', fname='VibraSeis', dpi=500)
-    sys.exit()
+#    plotFirstReturn(EDRData[:,int(_i/presum_fac)], type='Amp', sidelobe=False, title='First Return', fname='VibraSeis-Method1', dpi=500)
+#    sys.exit()
   #
   # Calculate Signal-To-Noise (This isn't very useful for determining the best method for reducing sidelobe
   #
@@ -143,14 +143,14 @@ def main(runName, auxname, lblname, edrname, chirp='ref', presum_proc=None, beta
   fname = '../runs/' + str(runName) + '.npy'
   np.save(fname, EDRData)
   plotEDR(EDRData, fname=runName, ptype='Amp', thres=0, rel=True)
-  plotEDR(EDRData, fname=runName, ptype='Pow', thres=0, rel=True)
-  plotEDR(EDRData, fname=runName, ptype='dB', thres=-15, rel=True)
+#  plotEDR(EDRData, fname=runName, ptype='Pow', thres=0, rel=True)
+#  plotEDR(EDRData, fname=runName, ptype='dB', thres=-15, rel=True)
   return
   
 if __name__ == '__main__':
   runName = 'test'
   verb = True
-  diag = True
+  diag = False
   chirp = 'ref'
   beta = 0						# Kaiser window beta value; 0 -rectangular; 5 similar to Hamming; 6 similar to Hann, 8.6 Similar to blackman
   td = 6                                              # Which test set
