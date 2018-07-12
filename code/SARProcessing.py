@@ -80,7 +80,6 @@ def rangeCompression(sci, calChirp, window, chirp='ref', fil_type='Match', diag=
       sys.exit()
     return decomp
   else:
-    Fc = (20 - 80./3.)                                    # 6.66666 MHz
     dt = (3./80.)                                           # 0.0375 Microseconds
     t = np.arange(0*dt, 4096*dt, dt)
     #
@@ -89,29 +88,28 @@ def rangeCompression(sci, calChirp, window, chirp='ref', fil_type='Match', diag=
     if len(sci) != 4096:
       echoes = np.zeros(4096, complex)
       echoes[:len(sci)] = sci
-    echoes_shift = echoes
+    #
+    # Check the length of the window
+    #
+    if len(window) != 4096:
+      temp = np.copy(window)
+      window = np.zeros(4096, float)
+      window[:len(temp)] = temp
     #
     # Compute the FFT and place on same scale as the calibrated chirp
     #
-    ecSpec = np.fft.fft(echoes_shift)  / len(echoes_shift)
-    ecFreq = np.fft.fftfreq(len(echoes_shift), d=dt)
+    ecSpec = np.fft.fft(echoes)  / len(echoes)
+    ecFreq = np.fft.fftfreq(len(echoes), d=dt)
     #
     # Pad Chirp
     # 
     chirpWin = np.zeros(4096, complex)
     chirpWin[0:2048] = np.conj(calChirp)
     #
-    # Take central 2048 samples
-    #
-    st = 0
-    en = 4096
-    ecSpec_cut = ecSpec[st:en]
-    ecFreq_cut = ecFreq[st:en]
-    #
     # Perform Chirp compression
     #
     if fil_type == 'Match':
-      dechirp = ecSpec * chirpWin
+      dechirp = window * ecSpec * chirpWin
     elif fil_type == "Inverse":
       sys.exit()
     #
@@ -132,15 +130,18 @@ def rangeCompression(sci, calChirp, window, chirp='ref', fil_type='Match', diag=
       # 
       plt.subplot(3,1,2)
       plt.plot(np.abs(ecSpec))
-      plt.axvline(st, color='red')
-      plt.axvline(en, color='red')
       plt.title("Modulus Amplitude Spectrum (|S|)")
       plt.subplot(3,1,3)
       plt.plot(np.unwrap(np.angle(ecSpec)))
-      plt.axvline(st, color='red')
-      plt.axvline(en, color='red')
       plt.title('Unwrapped Phase Spectrum')
       plt.tight_layout()
+      plt.show()
+      plt.clf()
+      #
+      # Window
+      #
+      plt.plot(window)
+      plt.title('Windowing Function')
       plt.show()
       plt.clf()
       #
