@@ -46,22 +46,38 @@ def detChirpFiles(TxTemp, RxTemp, chirp='ref'):
                    RxCalNames[RxDiff.index(min(RxDiff))] + ext
     if os.path.isfile(calChirpFile):
       calChirp = np.fromfile(calChirpFile, dtype='<f')
+      # Method 1
+      # Add a zero to the front 
+#      real = np.zeros(4096, float)
+#      real[1:2049] = calChirp[:2048]
+      # Drop the last sample and reverse
+#      real[2049:] = np.flipud(calChirp[0:2047])
+      # Add a zero to the front
+#      imag = np.zeros(4096, float)
+#      imag[1:2049] = calChirp[2048:]
+      # Drop the last sample and reverse and change sign
+#      imag[2049:] = -1 * np.flipud(calChirp[2048:-1])
+      # Method 2
+      # Add a zero to the end
       real = np.zeros(4096, float)
       real[0:2048] = calChirp[:2048]
+      # Drop the last sample and reverse
       real[2049:] = np.flipud(calChirp[1:2048])
+      # Add a zero to the front
       imag = np.zeros(4096, float)
       imag[0:2048] = calChirp[2048:]
+      # Drop the last sample and reverse and change sign
       imag[2049:] = -1 * np.flipud(calChirp[2049:])
       calChirp = real + 1j*imag
-#      plt.subplot(4,1,1)
-#      plt.plot(real)
-#      plt.subplot(4,1,2)
-#      plt.plot(imag)
-#      plt.subplot(4,1,3)
-#      plt.plot(np.fft.ifft(calChirp))
-#      plt.tight_layout()
-#      plt.show()
-#      sys.exit()
+      plt.subplot(4,1,1)
+      plt.plot(real)
+      plt.subplot(4,1,2)
+      plt.plot(imag)
+      plt.subplot(4,1,3)
+      plt.plot(np.fft.ifft(calChirp))
+      plt.tight_layout()
+      plt.show()
+      sys.exit()
       return calChirp
     else:
       print('Calibrated chirp file not found...exiting.')
