@@ -46,9 +46,22 @@ def detChirpFiles(TxTemp, RxTemp, chirp='ref'):
                    RxCalNames[RxDiff.index(min(RxDiff))] + ext
     if os.path.isfile(calChirpFile):
       calChirp = np.fromfile(calChirpFile, dtype='<f')
-      real = calChirp[:2048]
-      imag = calChirp[2048:]
+      real = np.zeros(4096, float)
+      real[0:2048] = calChirp[:2048]
+      real[2049:] = np.flipud(calChirp[1:2048])
+      imag = np.zeros(4096, float)
+      imag[0:2048] = calChirp[2048:]
+      imag[2049:] = -1 * np.flipud(calChirp[2049:])
       calChirp = real + 1j*imag
+#      plt.subplot(4,1,1)
+#      plt.plot(real)
+#      plt.subplot(4,1,2)
+#      plt.plot(imag)
+#      plt.subplot(4,1,3)
+#      plt.plot(np.fft.ifft(calChirp))
+#      plt.tight_layout()
+#      plt.show()
+#      sys.exit()
       return calChirp
     else:
       print('Calibrated chirp file not found...exiting.')

@@ -98,8 +98,8 @@ def rangeCompression(sci, calChirp, window, chirp='ref', fil_type='Match', diag=
     #
     # Pad Chirp
     # 
-    chirpWin = np.zeros(4096, complex)
-    chirpWin[1:2049] = np.conj(calChirp)
+    chirpWin = np.conj(calChirp)
+#    chirpWin[1:2049] = np.conj(calChirp)
     #
     # Take central 2048 samples
     #
