@@ -141,7 +141,7 @@ def main(runName, auxname, lblname, edrname, chirp='ref', presum_proc=None, beta
 if __name__ == '__main__':
   runName = 'test'
   verb = True
-  diag = True
+  diag = False
   chirp = 'ref'
   beta = 0					# Kaiser window beta value; 0 -rectangular; 5 similar to Hamming; 6 similar to Hann, 8.6 Similar to blackman
   td = 6                                              # Which test set

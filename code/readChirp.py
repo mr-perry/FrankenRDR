@@ -12,7 +12,7 @@ def detChirpFiles(TxTemp, RxTemp, chirp='ref'):
   for range compression and returns the decoded calibrated chirp.
   This is solely based off the temperatures of the TxTemp and RxTemp.
   """
-  if chirp == 'ref':
+  if chirp == 'ref' or chirp == 'vib':
     calibRoot = '../calib/'
     calibName = 'reference_chirp'
     ext = '.dat'
@@ -46,8 +46,28 @@ def detChirpFiles(TxTemp, RxTemp, chirp='ref'):
                    RxCalNames[RxDiff.index(min(RxDiff))] + ext
     if os.path.isfile(calChirpFile):
       calChirp = np.fromfile(calChirpFile, dtype='<f')
-      real = calChirp[:2048]
-      imag = calChirp[2048:]
+      if chirp == 'ref':
+        real = calChirp[:2048]
+        imag = calChirp[2048:]
+      elif chirp == 'vib':
+        #
+        # Add a zero to the end to mimic missing Nyquist
+        #
+        real = np.zeros(4096, float)
+        real[0:2048] = calChirp[:2048]
+        #
+        # Drop the last sample to properly stitch Nyquist and reverse
+        #
+        real[2049:] = np.flipud(calChirp[1:2048])
+        #
+        # Add a zero to the front
+        #
+        imag = np.zeros(4096, float)
+        imag[0:2048] = calChirp[2048:]
+        #
+        # Drop the last sample and reverse and change sign
+        #
+        imag[2049:] = -1 * np.flipud(calChirp[2049:])
       calChirp = real + 1j*imag
       return calChirp
     else:
