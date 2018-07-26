@@ -79,7 +79,7 @@ def rangeCompression(sci, calChirp, window, chirp='ref', fil_type='Match', diag=
       plt.show()
       sys.exit()
     return decomp
-  else:
+  elif chirp == 'ref' or chirp == 'vib':
     dt = (3./80.)                                           # 0.0375 Microseconds
     t = np.arange(0*dt, 4096*dt, dt)
     #
@@ -88,23 +88,29 @@ def rangeCompression(sci, calChirp, window, chirp='ref', fil_type='Match', diag=
     if len(sci) != 4096:
       echoes = np.zeros(4096, complex)
       echoes[:len(sci)] = sci
-    #
-    # Check the length of the window
-    #
-    if len(window) != 4096:
-      temp = np.copy(window)
-      window = np.zeros(4096, float)
-      window[:len(temp)] = temp
+    if chirp == 'ref':
+      #
+      # Check the length of the window
+      #
+      if len(window) != 4096:
+        temp = np.copy(window)
+        window = np.zeros(4096, float)
+        window[:len(temp)] = temp
+    elif chirp == 'vib': # no window
+      window = np.ones(4096, float)
     #
     # Compute the FFT and place on same scale as the calibrated chirp
     #
     ecSpec = np.fft.fft(echoes)  / len(echoes)
     ecFreq = np.fft.fftfreq(len(echoes), d=dt)
-    #
-    # Pad Chirp
-    # 
-    chirpWin = np.zeros(4096, complex)
-    chirpWin[0:2048] = np.conj(calChirp)
+    if chirp == 'ref':
+      #
+      # Pad Chirp
+      # 
+      chirpWin = np.zeros(4096, complex)
+      chirpWin[0:2048] = np.conj(calChirp)
+    elif chirp == 'vib':
+      chirpWin = np.conj(calChirp)
     #
     # Perform Chirp compression
     #
